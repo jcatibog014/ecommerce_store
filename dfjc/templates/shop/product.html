@@ -37,6 +37,29 @@
         </div>
       {% endif %}
 
+      {% if can_order %}
+        {# A brand or kind the store hasn't put in the system: the cashier checks if it is on the shelf. #}
+        <details class="ask-for"{% if not (show_brands or show_kinds) %} data-small{% endif %}>
+          <summary>Not in the list? Ask for it</summary>
+          <form method="post" action="{{ url_for('cart.ask') }}" class="ask-form">
+            {{ csrf() }}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <p class="card-note">Tell us the brand and kind you want. The cashier checks if we have it and tells you the price before you pay.</p>
+            <div class="ask-fields">
+              <label class="field ask-wanted"><span class="field-label">What you're looking for</span>
+                <input type="text" name="wanted" maxlength="80" required placeholder="Like: Nescafe Classic, or Creamy White in a big box"></label>
+              <label class="field"><span class="field-label">Size</span>
+                <select name="unit_name">
+                  {% for unit in product.active_units %}<option value="{{ unit.name }}">{{ unit.name }}</option>{% endfor %}
+                </select></label>
+              <label class="field ask-quantity"><span class="field-label">How many</span>
+                <input type="number" name="quantity" value="1" min="1" max="999" inputmode="numeric"></label>
+              <button class="button button-quiet" type="submit">Ask for it</button>
+            </div>
+          </form>
+        </details>
+      {% endif %}
+
       <div class="product-status">
         {{ stock_pill(product) }}
         {% if g.user and can(SHOP) %}

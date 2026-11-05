@@ -230,10 +230,13 @@ def fill_orders(s, store, people, moment):
 
     promos = fill_promos(s, store, moment)
 
-    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False, voucher=None):
+    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False, voucher=None, asks=()):
+        """asks: [(product title, what they want, size, how many)] for "Not in the list? Ask for it"."""
         user = people[who]
         for product_name, unit_name, quantity in lines:
             checkout.add_to_cart(s, user, units[(product_name, unit_name)], quantity, moment - ago)
+        for title, wanted, unit_name, quantity in asks:
+            checkout.ask_for(s, user, units[(title, unit_name)].product, wanted, unit_name, quantity, moment - ago)
         s.flush()
         area = address.area if address else None
         method = "online" if online else "cash_pickup" if fulfilment == PICKUP else "cod"
@@ -242,9 +245,16 @@ def fill_orders(s, store, people, moment):
         placed, _ = checkout.place_order(s, user, store, choice, checkout.new_checkout_key(), moment - ago)
         return placed
 
-    def price(placed, ago, wholesale_bulk=True, note=""):
+    def price(placed, ago, wholesale_bulk=True, note="", answers=None):
+        """answers: {what was asked for: price in pesos, or None for not available}."""
         choices = {line.id: WHOLESALE for line in placed.lines if wholesale_bulk and line.pieces_per_unit > 1}
-        orders.price_order(s, placed, choices, people["lorna"], moment - ago, placed.version, note)
+        asked = {}
+        for line in placed.lines:
+            if line.is_request:
+                wanted = line.product_name.split(" - ", 1)[1]
+                price_pesos = (answers or {}).get(wanted)
+                asked[line.id] = None if price_pesos is None else centavos(price_pesos)
+        orders.price_order(s, placed, choices, people["lorna"], moment - ago, placed.version, note, requests=asked)
 
     hours, days = timedelta(hours=1), timedelta(days=1)
     # Ana's own orders (what the visitor sees as a shopper), oldest first.
@@ -258,11 +268,15 @@ def fill_orders(s, store, people, moment):
 
     # Other shoppers: a reseller's bulk orders (one priced at wholesale), a delivery, and one the store cancelled.
     bulk = order("marites", [("Instant pancit canton 60 g", "Box of 72", 1), ("3-in-1 coffee sachet", "Box of 30", 2),
-                             ("Candles, big", "Piece", 4)], 2 * days, voucher="SUKI50")
-    price(bulk, 2 * days - hours, note="Wholesale price for the boxes. Salamat po!")
+                             ("Candles, big", "Piece", 4)], 2 * days, voucher="SUKI50",
+                 asks=[("3-in-1 coffee sachet", "Barako Gold Creamy White", "Pack of 10", 2),
+                       ("Shampoo sachet 12 mL", "Lusog Hair Kids", "Strip of 12", 1)])
+    price(bulk, 2 * days - hours, note="Wholesale price for the boxes. We have the creamy coffee; sorry, no kids' shampoo.",
+          answers={"Barako Gold Creamy White": 115, "Lusog Hair Kids": None})
     order("marites", [("Instant noodles, chicken 55 g", "Box of 72", 2), ("Sardines in tomato sauce 155 g", "Case of 100", 1),
                       ("Laundry powder 70 g", "Case of 144", 1), ("Shampoo sachet 12 mL", "Strip of 12", 5)],
-          timedelta(minutes=12), note="For my sari-sari store. I will pick up tomorrow morning.")
+          timedelta(minutes=12), note="For my sari-sari store. I will pick up tomorrow morning.",
+          asks=[("Instant pancit canton 60 g", "Pancit Ko Extra Hot", "Box of 72", 1)])
     ramon_home = Address(user_id=people["ramon"].id, label="Home", area_id=areas["Poblacion"].id,
                          street="12 Luna Street", landmark="", created_at=moment - 5 * days)
     ramon_home.area = areas["Poblacion"]
@@ -288,6 +302,8 @@ def fill_orders(s, store, people, moment):
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
     checkout.add_to_cart(s, people["ana"], units[("Instant pancit canton 60 g", "Pack")], 6, moment)
+    checkout.ask_for(s, people["ana"], units[("3-in-1 coffee sachet", "Sachet")].product, "Kape Juan Mocha",
+                     "Sachet", 10, moment)
     s.flush()
 
 

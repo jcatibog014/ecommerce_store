@@ -171,6 +171,17 @@ def shoot_counter(page):
     save(page, "receipt.png")
 
 
+def shoot_ask_for(page):
+    """The coffee page with "Not in the list? Ask for it" open and filled in."""
+    view_as(page, "shopper")
+    page.goto(f"{BASE}{address(page, '{coffee}')}")
+    page.locator(".ask-for summary").click()
+    page.locator('.ask-form input[name="wanted"]').fill("Nescafe Classic")
+    page.locator('.ask-form select[name="unit_name"]').select_option("Pack of 10")
+    page.locator('.ask-form input[name="quantity"]').fill("2")
+    save(page, "ask-for.png")
+
+
 def shoot_visitor_pages(browser):
     page = browser.new_page(viewport=DESKTOP, color_scheme="light")
     for name, path in (("login.png", "/login"), ("signup.png", "/signup")):
@@ -195,6 +206,7 @@ def main():
             save(page, name)
         shoot_sandbox(pages[("light", DESKTOP["width"])])
         shoot_counter(pages[("light", DESKTOP["width"])])
+        shoot_ask_for(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

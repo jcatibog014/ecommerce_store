@@ -15,11 +15,13 @@
     <tbody>
       {% for line in order.lines %}
         <tr>
-          <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}
-            {% if order.is_priced and line.price_type == 'wholesale' %} · <span class="pill pill-wholesale">Wholesale</span>{% endif %}</span></th>
+          <th scope="row"{% if line.request_status == 'unavailable' %} class="is-unavailable"{% endif %}>{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}
+            {% if line.is_request %} · <span class="pill pill-asked">Asked for</span>
+              {% if line.request_status == 'pending' %} The cashier checks if we have it{% elif line.request_status == 'available' %} <span class="pill pill-on">We have it</span>{% else %} <span class="pill pill-off">Not available</span>{% endif %}
+            {% elif order.is_priced and line.price_type == 'wholesale' %} · <span class="pill pill-wholesale">Wholesale</span>{% endif %}</span></th>
           <td class="num">{{ line.quantity }}</td>
-          <td class="num">{{ line.unit_price|peso }}</td>
-          <td class="num">{{ line.line_total|peso }}</td>
+          <td class="num">{% if line.is_request and not line.counts %}<span class="muted">{{ 'Price later' if line.request_status == 'pending' else '-' }}</span>{% else %}{{ line.unit_price|peso }}{% endif %}</td>
+          <td class="num">{% if line.is_request and not line.counts %}<span class="muted">-</span>{% else %}{{ line.line_total|peso }}{% endif %}</td>
         </tr>
       {% endfor %}
     </tbody>

@@ -12,6 +12,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 
 - See the products by category, search, and sort by name, price or newest.
 - Choose the **brand** and the **kind** (like Original or Creamy White) of a product. Each one has its own price and stock.
+- Not in the list? **Ask for it**: type the brand or kind you want, the size and how many. The cashier checks if the store has it and gives the price before you pay.
 - See every way to buy it (a sachet, a box of 30) and the price of one piece, and whether it is in stock.
 - Put products in a cart and check out: **pickup** at the store, or **delivery** to your barangay (each barangay has its own fee).
 - Pay in cash (at the counter, or to the rider), or **pay online** after the cashier prices the order.
@@ -23,6 +24,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 **The cashier:**
 
 - Sees new online orders in **Orders**, chooses **Retail** or **Wholesale** for each line (or all at once), and confirms the price. Then the shopper sees the final total.
+- For each asked-for item, chooses **We have it** (and types its price) or **Not available**.
 - Moves orders along the **Packing** board: To Pack, Packing, Ready, Out for Delivery. Starting to pack takes the items off the shelf.
 - Hands over pickup orders (and takes the cash), or sends delivery orders out with a rider. Receives the riders' cash (**Rider Cash**).
 - Cancels an order with a reason, or gives the money back (a **refund**) for an order paid online.
@@ -78,6 +80,7 @@ This project practises **transactions**, **payments** and **order state**:
 | Choose the brand and kind | ![3-in-1 coffee: brand and kind](docs/screenshots/product-kinds.png) |
 | Brand and kind (dark mode) | ![Brand and kind in dark mode](docs/screenshots/product-kinds-dark.png) |
 | Brand and kind on a phone | ![Brand and kind on a phone](docs/screenshots/phone-product-kinds.png) |
+| Not in the list? Ask for it | ![Asking for a brand that isn't listed](docs/screenshots/ask-for.png) |
 | On a phone | ![Home on a phone](docs/screenshots/phone.png) |
 | Products on a phone | ![Products on a phone](docs/screenshots/phone-products.png) |
 | Cart | ![The cart](docs/screenshots/cart.png) |

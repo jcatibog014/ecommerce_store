@@ -608,6 +608,28 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .option-chip.is-out { color: var(--ink-soft); text-decoration: line-through; }
 .option-chip.is-out[aria-current="true"] { color: var(--surface); }
 .product-card-kinds { margin: 0; font-size: .85rem; color: var(--ink-soft); }
+/* "Not in the list? Ask for it": closed until opened, so it never pushes the prices down. */
+.ask-for { margin: -.25rem 0 1rem; }
+.ask-for summary { display: inline-block; cursor: pointer; color: var(--link); font-weight: 600; font-size: .95rem; }
+.ask-for summary:hover { text-decoration: underline; }
+.ask-for[open] summary { margin-bottom: .5rem; }
+.ask-form { padding: .85rem 1rem; border: 1px dashed var(--bamboo-deep); border-radius: var(--radius); background: var(--surface); }
+.ask-form .card-note { margin: 0 0 .6rem; }
+.ask-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem .75rem; align-items: end; }
+@container main (min-width: 40rem) { .ask-fields { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 5.5rem auto; } }
+.pill-asked { background: var(--tile-4-bg); color: var(--tile-4-ink); }
+.ask-mark { display: flex; align-items: center; justify-content: center; background: var(--tile-4-bg); color: var(--tile-4-ink); font-family: var(--headline); font-size: 1.5rem; font-weight: 800; }
+.lines-table th.is-unavailable { color: var(--ink-soft); text-decoration: line-through; }
+.lines-table th.is-unavailable .row-sub { text-decoration: none; }
+.asked-row > * { background: var(--surface-soft); }
+.asked-choice { align-items: center; }
+/* The price box sits between the two pills; it must not take the pills' hidden-radio styles. */
+.asked-choice .asked-price { position: static; cursor: text; }
+.asked-choice .asked-price .money-input { position: relative; display: inline-block; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+.asked-choice .asked-price .money-input > span { position: absolute; left: .5rem; top: 50%; transform: translateY(-50%); min-height: 0; padding: 0; border: 0; background: none; font-size: .86rem; }
+.asked-choice .asked-price input { position: static; opacity: 1; inset: auto; cursor: text; }
+.asked-price .money-input input { width: 6.5rem; height: 2rem; min-height: 2rem; padding: .2rem .4rem .2rem 1.4rem; border: 1px solid var(--rule-strong); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); font: inherit; font-size: .86rem; }
+.asked-note { color: var(--tile-4-ink); font-weight: 600; }
 .product-page-info h2 { margin-top: 1.5rem; }
 .product-description { font-size: 1.05rem; max-width: 40em; }
 .units-table { width: 100%; max-width: 40rem; border-collapse: collapse; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }

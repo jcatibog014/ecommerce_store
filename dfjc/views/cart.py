@@ -6,7 +6,7 @@ from .. import checkout, db, forms, gateways, vouchers
 from ..dates import local_today
 from ..checkout import CheckoutProblem
 from ..dates import utcnow
-from ..models import CartItem, ProductUnit
+from ..models import CartItem, CartRequest, Product, ProductUnit
 from ..permissions import SHOP, can, needs
 
 bp = Blueprint("cart", __name__)
@@ -44,11 +44,54 @@ def add():
     return redirect(back)
 
 
+@bp.post("/cart/ask")
+def ask():
+    """"Not in the list? Ask for it": the shopper wants a brand or kind the store hasn't listed."""
+    s = db.session()
+    product = s.get(Product, request.form.get("product_id", type=int) or 0)
+    if product is None or g.store is None or product.store_id != g.store.id or not product.is_active:
+        abort(404)
+    back = url_for("shop.product", product_id=product.id)
+    if g.user is None:
+        flash("Log in or sign up to order. Your account keeps your cart and your orders.")
+        return redirect(url_for("auth.login", next=back))
+    if not can(SHOP):
+        abort(403, STAFF_CANT_SHOP)
+    wanted, problem = forms.text(request.form, "wanted", checkout.WANTED_MAX, required=True,
+                                 label="What you're looking for")
+    quantity, quantity_problem = forms.whole_number(request.form, "quantity", 1, checkout.MAX_QUANTITY, default=1)
+    sizes = {unit.name for unit in product.active_units} or {"Piece"}
+    unit_name = request.form.get("unit_name") if request.form.get("unit_name") in sizes else sorted(sizes)[0]
+    if problem or quantity_problem:
+        flash(problem or quantity_problem, "error")
+        return redirect(back)
+    checkout.ask_for(s, g.user, product, wanted, unit_name, quantity, utcnow())
+    s.commit()
+    flash(f"Added to your cart: {quantity} x \"{wanted}\" ({unit_name.lower()}). The cashier checks if we have it "
+          "and tells you the price before you pay.")
+    return redirect(back)
+
+
+@bp.post("/cart/asks/<int:request_id>/remove")
+@needs(SHOP, STAFF_CANT_SHOP)
+def remove_request(request_id):
+    s = db.session()
+    found = s.get(CartRequest, request_id)
+    if found is None or found.user_id != g.user.id:
+        abort(404)
+    s.delete(found)
+    s.commit()
+    flash(f"Removed \"{found.wanted}\" from your cart.")
+    return redirect(url_for("cart.index"))
+
+
 @bp.get("/cart")
 @needs(SHOP, STAFF_CANT_SHOP)
 def index():
-    items = checkout.cart_items(db.session(), g.user)
-    return render_template("shop/cart.html", items=items, summary=checkout.cart_summary(items))
+    s = db.session()
+    items = checkout.cart_items(s, g.user)
+    return render_template("shop/cart.html", items=items, summary=checkout.cart_summary(items),
+                           requests=checkout.cart_requests(s, g.user))
 
 
 @bp.post("/cart/<int:item_id>")
@@ -85,8 +128,9 @@ def remove(item_id):
 def checkout_page():
     s = db.session()
     items = checkout.cart_items(s, g.user)
+    requests = checkout.cart_requests(s, g.user)
     summary = checkout.cart_summary(items)
-    if not summary["can_check_out"]:
+    if not summary["can_check_out"] or not (items or requests):
         if items:
             flash("Please fix the lines marked in your cart first.", "error")
         return redirect(url_for("cart.index"))
@@ -136,6 +180,7 @@ def checkout_page():
     return render_template("shop/checkout.html", items=items, summary=summary, areas=areas, addresses=addresses,
                            errors=errors, form=form, key=key, online=gateways.for_store(g.store) is not None,
                            online_minimum=gateways.ONLINE_MINIMUM, voucher=voucher, voucher_note=voucher_note,
+                           requests=requests,
                            discount=discount), 400 if errors else 200
 
 

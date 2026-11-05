@@ -16,6 +16,7 @@
             ├─< vouchers (promo codes) ──< voucher_uses (one per shopper)
             └─< notifications (the email outbox)
     users ──< favorites ──> products
+    users ──< cart_requests ──> products ("Not in the list? Ask for it")
 
     users ─┬─< cart_items ──> product_units
            ├─< addresses ──> delivery_areas
@@ -452,12 +453,43 @@ class Order(Base):
         return self.payments[-1] if self.payments else None
 
 
+# An asked-for line: a brand or kind the shopper wants that isn't in the system (yet).
+REQUEST_PENDING = "pending"          # the cashier hasn't checked yet
+REQUEST_AVAILABLE = "available"      # the cashier has it, at the price they typed
+REQUEST_UNAVAILABLE = "unavailable"  # not in the store: it costs nothing and isn't packed
+
+
+class CartRequest(Base):
+    """"Not in the list? Ask for it": something the shopper wants, asked under a product
+    (for example "Nescafe Classic" under 3-in-1 coffee). It has no price and holds no stock:
+    the cashier says if the store has it, and its price, when pricing the order."""
+    __tablename__ = "cart_requests"
+    __table_args__ = (CheckConstraint("quantity >= 1", name="quantity_positive"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    wanted: Mapped[str] = mapped_column(String(80))  # what they typed: "Nescafe Classic"
+    unit_name: Mapped[str] = mapped_column(String(40))  # one of the product's sizes, or "Piece"
+    quantity: Mapped[int]
+    added_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    product: Mapped[Product] = relationship()
+
+    @property
+    def name(self):
+        return f"{self.product.group_title} - {self.wanted}"
+
+
 class OrderLine(Base):
     """One line of an order. The name and BOTH prices are copied when the order is placed,
-    so a later price change never changes an order that was already made."""
+    so a later price change never changes an order that was already made.
+
+    An asked-for line (is_request) has no stock and no price until the cashier checks it:
+    request_status says pending, available (then retail_price is the cashier's price) or unavailable."""
     __tablename__ = "order_lines"
     __table_args__ = (
-        CheckConstraint("quantity >= 1 AND pieces >= 1", name="quantity_positive"),
+        CheckConstraint("quantity >= 1 AND (pieces >= 1 OR is_request)", name="quantity_positive"),
         CheckConstraint(f"price_type IN ('{RETAIL}', '{WHOLESALE}')", name="price_type"),
     )
 
@@ -473,6 +505,8 @@ class OrderLine(Base):
     retail_price: Mapped[int]
     wholesale_price: Mapped[int]
     price_type: Mapped[str] = mapped_column(String(10), default=RETAIL)  # the cashier's choice
+    is_request: Mapped[bool] = mapped_column(default=False, server_default=false())
+    request_status: Mapped[str] = mapped_column(String(12), default="", server_default="")
 
     order: Mapped[Order] = relationship(back_populates="lines")
 
@@ -481,8 +515,13 @@ class OrderLine(Base):
         return self.wholesale_price if self.price_type == WHOLESALE else self.retail_price
 
     @property
+    def counts(self):
+        """Does this line cost money? An asked-for line only once the cashier has it."""
+        return not self.is_request or self.request_status == REQUEST_AVAILABLE
+
+    @property
     def line_total(self):
-        return self.quantity * self.unit_price
+        return self.quantity * self.unit_price if self.counts else 0
 
 
 class OrderEvent(Base):

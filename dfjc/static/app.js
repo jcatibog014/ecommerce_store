@@ -227,6 +227,15 @@ function setUpPriceForm() {
       row.classList.toggle("is-wholesale", choice === "wholesale");
       subtotal += amount;
     });
+    form.querySelectorAll("[data-request]").forEach((row) => {
+      const have = row.querySelector('input[type=radio][value="available"]').checked;
+      const raw = row.querySelector("[data-request-price]").value.replace(/[,\s₱]/g, "");
+      const ok = /^\d+(\.\d{1,2})?$/.test(raw);
+      const [whole, cents = ""] = ok ? raw.split(".") : ["0"];
+      const amount = have && ok ? Number(row.dataset.quantity) * (Number(whole) * 100 + Number((cents + "00").slice(0, 2))) : 0;
+      row.querySelector("[data-line-total]").textContent = have && ok ? peso(amount) : "-";
+      subtotal += amount;
+    });
     form.querySelector("[data-subtotal-text]").textContent = peso(subtotal);
     form.querySelector("[data-total-text]").textContent = peso(subtotal + fee);
   };
@@ -240,6 +249,13 @@ function setUpPriceForm() {
     });
   });
   form.addEventListener("change", update);
+  form.addEventListener("input", update);
+  // Typing a price means "we have it".
+  form.querySelectorAll("[data-request-price]").forEach((input) => {
+    input.addEventListener("input", () => {
+      if (input.value) input.closest("[data-request]").querySelector('input[value="available"]').checked = true;
+    });
+  });
   update();
 }
 

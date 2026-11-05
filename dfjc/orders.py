@@ -21,7 +21,8 @@ from sqlalchemy.orm.attributes import set_committed_value
 
 from .models import (
     AWAITING_PAYMENT, CANCELLED, CASH_PICKUP, COD, CONFIRMED, DELIVERED, DELIVERY, MIXED, OUT_FOR_DELIVERY, PACKING,
-    PAID, PICKED_UP, PICKUP, PLACED, READY, REFUNDED, RETAIL, WHOLESALE, Order, OrderEvent, Product,
+    PAID, PICKED_UP, PICKUP, PLACED, READY, REFUNDED, REQUEST_AVAILABLE, REQUEST_UNAVAILABLE, RETAIL, WHOLESALE, Order,
+    OrderEvent, Product,
 )
 
 TRANSITIONS = {
@@ -127,9 +128,10 @@ def move(s, order, to_status, by, moment, note="", **changes):
 
 
 def pieces_by_product(order):
+    """What the order holds in stock. Asked-for lines aren't in the system, so they hold nothing."""
     pieces = defaultdict(int)
     for line in order.lines:
-        if line.product_id:
+        if line.product_id and not line.is_request:
             pieces[line.product_id] += line.pieces
     return pieces
 
@@ -166,20 +168,34 @@ def totals(order):
 
 
 def price_type_of(lines):
-    kinds = {line.price_type for line in lines}
+    kinds = {line.price_type for line in lines if not line.is_request}
+    if not kinds:
+        return RETAIL  # only asked-for items: the cashier typed their prices
     return kinds.pop() if len(kinds) == 1 else MIXED
 
 
-def price_order(s, order, choices, cashier, moment, version, note=""):
+def price_order(s, order, choices, cashier, moment, version, note="", requests=None):
     """The cashier gives each line its price: choices is {line id: "retail" or "wholesale"}.
-    Lines not in choices keep retail. Then the order is confirmed (cash) or waits for payment
-    (online), all in the caller's one transaction."""
+    Lines not in choices keep retail. requests is {asked-for line id: price in centavos, or
+    None for "not available"}; every asked-for line needs an answer. Then the order is confirmed
+    (cash) or waits for payment (online), all in the caller's one transaction."""
     if order.status != PLACED:
         raise MoveNotAllowed("This order was already priced.")
     if str(order.version) != str(version):
         raise OrderChanged("This order was changed by someone else a moment ago. Reload the page to see it.")
+    requests = requests or {}
     for line in order.lines:
+        if line.is_request:
+            if line.id not in requests:
+                raise MoveNotAllowed(f"Say if you have \"{line.product_name}\": type its price, or choose Not available.")
+            price = requests[line.id]
+            line.request_status = REQUEST_UNAVAILABLE if price is None else REQUEST_AVAILABLE
+            line.retail_price = line.wholesale_price = price or 0
+            line.price_type = RETAIL
+            continue
         line.price_type = WHOLESALE if choices.get(line.id) == WHOLESALE else RETAIL
+    if not any(line.counts for line in order.lines):
+        raise MoveNotAllowed("Nothing in this order is available. Cancel it instead, with a reason for the shopper.")
     s.flush()
     from . import vouchers
     subtotal = sum(line.line_total for line in order.lines)

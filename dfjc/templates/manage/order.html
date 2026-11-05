@@ -32,6 +32,22 @@
           <thead><tr><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col">Price</th><th scope="col" class="num">Amount</th></tr></thead>
           <tbody>
             {% for line in order.lines %}
+              {% if line.is_request %}
+                <tr data-request data-quantity="{{ line.quantity }}" class="asked-row">
+                  <th scope="row">{{ line.product_name }}<span class="row-sub"><span class="pill pill-asked">Asked for</span> {{ line.unit_name }}: not in the system. Do we have it?</span></th>
+                  <td class="num">{{ line.quantity }}</td>
+                  <td>
+                    <fieldset class="price-choice asked-choice">
+                      <legend class="visually-hidden">Do we have {{ line.product_name }}?</legend>
+                      <label><input type="radio" name="request_{{ line.id }}" value="available" required><span>We have it</span></label>
+                      <label class="asked-price"><span class="visually-hidden">Price each {{ line.unit_name }}</span>
+                        <span class="money-input"><span aria-hidden="true">₱</span><input type="text" inputmode="decimal" name="price_{{ line.id }}" placeholder="Each" data-request-price></span></label>
+                      <label><input type="radio" name="request_{{ line.id }}" value="unavailable"><span>Not available</span></label>
+                    </fieldset>
+                  </td>
+                  <td class="num" data-line-total>-</td>
+                </tr>
+              {% else %}
               <tr data-line data-quantity="{{ line.quantity }}" data-retail="{{ line.retail_price }}" data-wholesale="{{ line.wholesale_price }}">
                 <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}</span></th>
                 <td class="num">{{ line.quantity }}</td>
@@ -45,6 +61,7 @@
                 </td>
                 <td class="num" data-line-total>{{ line.line_total|peso }}</td>
               </tr>
+              {% endif %}
             {% endfor %}
           </tbody>
         </table>

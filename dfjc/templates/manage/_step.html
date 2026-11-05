@@ -1,0 +1,38 @@
+{# The one next step for an order, on the Packing board and on the order page. #}
+{% from "_macros.html" import csrf %}
+{% macro next_step(order, riders, next_url) %}
+  {% set cash = order.payment_method in ('cash_pickup', 'cod') %}
+  {% if order.status in ('confirmed', 'paid') %}
+    {{ step_form(order, 'pack', 'Start packing', next_url) }}
+  {% elif order.status == 'packing' %}
+    {{ step_form(order, 'packed', 'Packed: ready for pickup' if order.fulfilment == 'pickup' else 'Packed: ready to go', next_url) }}
+  {% elif order.status == 'ready' and order.fulfilment == 'pickup' %}
+    {{ step_form(order, 'picked_up', ('Picked up, ' ~ order.total|peso ~ ' cash received') if cash else 'Picked up', next_url,
+                 'Hand over ' ~ order.ref ~ ' to ' ~ order.customer_name ~ '?' ~ (' Take ' ~ order.total|peso ~ ' in cash first.' if cash else '')) }}
+  {% elif order.status == 'ready' %}
+    <form method="post" action="{{ url_for('fulfil.step', ref=order.ref) }}" class="step-form send-form">
+      {{ csrf() }}
+      <input type="hidden" name="version" value="{{ order.version }}">
+      <input type="hidden" name="action" value="send_out">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <label class="visually-hidden" for="rider-{{ order.id }}">Rider for {{ order.ref }}</label>
+      <select name="rider_id" id="rider-{{ order.id }}" required>
+        <option value="">Choose a rider</option>
+        {% for rider in riders %}<option value="{{ rider.id }}">{{ rider.name }}</option>{% endfor %}
+      </select>
+      <button class="button button-small" type="submit"{% if not riders %} disabled{% endif %}>Send out</button>
+    </form>
+  {% elif order.status == 'out_for_delivery' %}
+    <p class="row-sub">With {{ order.rider.first_name if order.rider else 'a rider' }}{% if cash %}; collecting {{ order.total|peso }}{% endif %}</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro step_form(order, action, label, next_url, confirm=None) %}
+  <form method="post" action="{{ url_for('fulfil.step', ref=order.ref) }}" class="step-form"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+    {{ csrf() }}
+    <input type="hidden" name="version" value="{{ order.version }}">
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <button class="button button-small" type="submit">{{ label }}</button>
+  </form>
+{% endmacro %}

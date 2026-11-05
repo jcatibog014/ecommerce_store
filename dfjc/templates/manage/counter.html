@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, money_field, product_picture, search_icon %}
+{% block title %}Counter - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Counter</h1>
+    <div class="actions">
+      <a class="button button-quiet" href="{{ url_for('counter.shift_page') }}">Close shift</a>
+    </div>
+    <p class="page-sub">Shift open since {{ shift.opened_at|nice_time }} · {{ summary.sale_count }} {{ 'sale' if summary.sale_count == 1 else 'sales' }}, {{ summary.sales|peso }}</p>
+  </div>
+
+  <div class="counter-layout">
+    <section class="card counter-find">
+      <form method="get" class="counter-search" role="search">
+        <label class="visually-hidden" for="counter-q">Search or scan a barcode</label>
+        <input id="counter-q" type="search" name="q" value="{{ q }}" maxlength="80" placeholder="Type a name or scan a barcode" autofocus>
+        <button class="button" type="submit" aria-label="Find">{{ search_icon() }}</button>
+      </form>
+      {% if found %}
+        <ul class="plain-list counter-results">
+          {% for product in found %}
+            <li class="counter-product">
+              <div class="counter-product-name">
+                <span class="row-picture">{{ product_picture(product) }}</span>
+                <span><strong>{{ product.name }}</strong><span class="row-sub">{{ '{:,}'.format(product.available_pieces) }} pieces can be sold</span></span>
+              </div>
+              {% for unit in product.active_units %}
+                <form method="post" action="{{ url_for('counter.add') }}" class="counter-unit">
+                  {{ csrf() }}
+                  <input type="hidden" name="unit_id" value="{{ unit.id }}">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <span class="counter-unit-name">{{ unit.name }}</span>
+                  <label class="visually-hidden" for="cq-{{ unit.id }}">How many {{ unit.name }}</label>
+                  <input class="qty-input" id="cq-{{ unit.id }}" type="number" name="quantity" value="1" min="1" max="999">
+                  <button class="button button-small button-quiet" type="submit" name="price_type" value="retail">Retail {{ unit.retail_price|peso }}</button>
+                  <button class="button button-small button-quiet" type="submit" name="price_type" value="wholesale"{% if unit.wholesale_price == unit.retail_price %} disabled{% endif %}>Wholesale {{ unit.wholesale_price|peso }}</button>
+                </form>
+              {% endfor %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif q %}
+        <p class="card-note">Nothing matches "{{ q }}". Try one word, like "rice".</p>
+      {% else %}
+        <p class="card-note">Type part of a name, or scan a barcode to add it straight away.</p>
+      {% endif %}
+    </section>
+
+    <section class="card ticket">
+      <div class="card-head">
+        <h2>This Sale</h2>
+        {% if lines %}
+          <div class="actions">
+            <form method="post" action="{{ url_for('counter.set_all') }}">{{ csrf() }}<input type="hidden" name="q" value="{{ q }}">
+              <button class="button button-small button-quiet" type="submit" name="price_type" value="retail">All retail</button>
+              <button class="button button-small button-quiet" type="submit" name="price_type" value="wholesale">All wholesale</button></form>
+          </div>
+        {% endif %}
+      </div>
+      {% if lines %}
+        <ul class="plain-list ticket-lines">
+          {% for line in lines %}
+            <li class="ticket-line{% if line.price_type == 'wholesale' %} is-wholesale{% endif %}">
+              <span class="ticket-what"><strong>{{ line.unit.product.name }}</strong>
+                <span class="row-sub">{{ line.unit.name }} · {{ 'Wholesale' if line.price_type == 'wholesale' else 'Retail' }} {{ line.unit_price|peso }}</span></span>
+              <form method="post" action="{{ url_for('counter.line', index=line.index) }}" class="ticket-qty">
+                {{ csrf() }}<input type="hidden" name="q" value="{{ q }}">
+                <label class="visually-hidden" for="tq-{{ line.index }}">How many</label>
+                <input class="qty-input" id="tq-{{ line.index }}" type="number" name="quantity" value="{{ line.quantity }}" min="0" max="999">
+                <button class="button button-small button-quiet" type="submit">Update</button>
+                <button class="link-button" type="submit" name="action" value="{{ 'retail' if line.price_type == 'wholesale' else 'wholesale' }}">{{ 'Make retail' if line.price_type == 'wholesale' else 'Make wholesale' }}</button>
+                <button class="link-button danger-link" type="submit" name="action" value="remove">Remove</button>
+              </form>
+              <span class="ticket-total">{{ line.line_total|peso }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="{{ url_for('counter.pay') }}" class="stack pay-box" data-change-form data-total="{{ total }}">
+          {{ csrf() }}
+          {# One key per ticket: pressing Pay twice records one sale. #}
+          <input type="hidden" name="ticket_key" value="{{ key }}">
+          <dl class="sum-rows">
+            <div class="sum-total"><dt>Total</dt><dd>{{ total|peso }}</dd></div>
+          </dl>
+          {{ money_field('cash_given', 'Cash given', attrs='required autocomplete="off"') }}
+          <p class="change-line" data-change-text hidden></p>
+          <div class="form-actions">
+            <button class="button button-wide" type="submit">Pay and print receipt</button>
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('counter.clear') }}" class="form-actions">{{ csrf() }}
+          <button class="link-button danger-link" type="submit">Clear this sale</button></form>
+      {% else %}
+        <p class="card-note">Nothing yet. Find a product and press Retail or Wholesale to add it.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if recent %}
+    <h2>This Shift's Sales</h2>
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th scope="col">Receipt</th><th scope="col">Time</th><th scope="col">Items</th><th scope="col">Price</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>
+          {% for sale in recent %}
+            <tr data-href="{{ url_for('counter.receipt', sale_id=sale.id) }}"{% if sale.voided_at %} class="is-voided"{% endif %}>
+              <th scope="row"><a class="row-link" href="{{ url_for('counter.receipt', sale_id=sale.id) }}">{{ sale.receipt_no }}</a>{% if sale.voided_at %} <span class="pill pill-off">Voided</span>{% endif %}</th>
+              <td>{{ sale.created_at|nice_time }}</td>
+              <td>{{ sale.lines|sum(attribute='quantity') }}</td>
+              <td>{{ PRICE_TYPES[sale.price_type] }}</td>
+              <td class="num">{{ sale.total|peso }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, empty %}
+{% block title %}{{ 'My Deliveries' if mine else 'Deliveries' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>{{ 'My Deliveries' if mine else 'Deliveries' }}</h1>
+    <p class="page-sub">{{ 'Orders with you now. Press Delivered when the shopper has them.' if mine else 'Every order out with a rider.' }}</p>
+  </div>
+  {% if mine %}
+    <div class="callout{% if cash_held %} callout-pay{% endif %} rider-cash">
+      <h2>Cash with You: {{ cash_held|peso }}</h2>
+      <p>{% if cash_held %}From {{ cash_count }} {{ 'delivery' if cash_count == 1 else 'deliveries' }}. Hand it to the cashier when you are back at the store.{% else %}Nothing to hand over right now.{% endif %}</p>
+    </div>
+  {% endif %}
+  {% if orders_found %}
+    <div class="delivery-list">
+      {% for order in orders_found %}
+        {% set cod = order.payment_method == 'cod' %}
+        <article class="card delivery-card">
+          <div class="card-head">
+            <h2>{{ order.customer_name }}</h2>
+            <span class="pill {{ 'payment-pending' if cod else 'payment-paid' }}">{{ 'Collect ' ~ order.total|peso if cod else 'Paid online' }}</span>
+          </div>
+          <p class="delivery-address">{{ order.address }}</p>
+          {% if order.customer_mobile %}<p><a class="button button-small button-quiet" href="tel:{{ order.customer_mobile }}">Call {{ order.customer_mobile|mobile }}</a></p>{% endif %}
+          {% if order.note %}<p class="shopper-note"><strong>Note:</strong> {{ order.note }}</p>{% endif %}
+          <p class="row-sub">{{ order.ref }} · {{ order.item_count }} items{% if not mine and order.rider %} · with {{ order.rider.first_name }}{% endif %}</p>
+          <div class="delivery-actions">
+            <form method="post" action="{{ url_for('fulfil.deliver', ref=order.ref, outcome='delivered') }}"
+                  {% if cod %}data-confirm="Did you collect {{ order.total|peso }} from {{ order.customer_name }}?"{% endif %}>
+              {{ csrf() }}<input type="hidden" name="version" value="{{ order.version }}">
+              <button class="button" type="submit">{{ 'Delivered, ' ~ order.total|peso ~ ' collected' if cod else 'Delivered' }}</button>
+            </form>
+            <details class="not-home">
+              <summary class="button button-quiet">Nobody home</summary>
+              <form method="post" action="{{ url_for('fulfil.deliver', ref=order.ref, outcome='not-home') }}" class="stack">
+                {{ csrf() }}<input type="hidden" name="version" value="{{ order.version }}">
+                <label class="field"><span class="field-label">What happened?</span>
+                  <input type="text" name="note" maxlength="300" placeholder="No answer, the gate was locked"></label>
+                <button class="button button-danger" type="submit">Bring it back to the store</button>
+              </form>
+            </details>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    {{ empty('No Deliveries Right Now', 'Orders the cashier sends out with you show up here.' if mine else 'Orders out with a rider show up here.') }}
+  {% endif %}
+  {% if delivered_today %}
+    <h2>Delivered Today</h2>
+    <ul class="plain-list done-list">
+      {% for order in delivered_today %}<li><strong>{{ order.ref }}</strong> {{ order.customer_name }} · {{ order.area_name }} · {{ order.updated_at|nice_time }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

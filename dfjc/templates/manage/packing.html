@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill %}
+{% from "manage/_step.html" import next_step %}
+{% block title %}Packing - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Packing</h1>
+    <p class="page-sub">Priced and paid orders, from the shelf to the shopper. {{ done_today }} handed over today.</p>
+  </div>
+  <div class="pack-board">
+    {% for key, label, found in columns %}
+      <section class="pack-column pack-{{ key }}" aria-labelledby="col-{{ key }}">
+        <h2 id="col-{{ key }}">{{ label }} <span class="badge badge-quiet">{{ found|length }}</span></h2>
+        {% for order in found %}
+          <article class="pack-card">
+            <div class="pack-card-head">
+              <a class="row-link" href="{{ url_for('staff_orders.detail', ref=order.ref) }}">{{ order.ref }}</a>
+              <span class="pill {{ 'pill-wholesale' if order.fulfilment == 'delivery' else 'pill-shopper' }}">{{ 'Delivery' if order.fulfilment == 'delivery' else 'Pickup' }}</span>
+            </div>
+            <p class="pack-who">{{ order.customer_name }}{% if order.area_name %} <span class="row-sub">{{ order.area_name }}</span>{% endif %}</p>
+            <ul class="pack-lines">
+              {% for line in order.lines[:4] %}<li>{{ line.quantity }} x {{ line.product_name }} <span class="muted">{{ line.unit_name }}</span></li>{% endfor %}
+              {% if order.lines|length > 4 %}<li class="muted">and {{ order.lines|length - 4 }} more</li>{% endif %}
+            </ul>
+            <p class="pack-money"><strong>{{ order.total|peso }}</strong> · {{ 'Paid online' if order.status == 'paid' or order.paid_payment else PAYMENT_METHODS[order.payment_method] }}</p>
+            {{ next_step(order, riders, url_for('fulfil.board')) }}
+          </article>
+        {% else %}
+          <p class="pack-empty">Nothing here.</p>
+        {% endfor %}
+      </section>
+    {% endfor %}
+  </div>
+{% endblock %}

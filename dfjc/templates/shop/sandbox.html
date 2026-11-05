@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Practice Payment - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {# Looks like a payment page so the flow is real, but it says plainly that no money moves. #}
+  <div class="sandbox">
+    <div class="card sandbox-card">
+      <p class="kicker">Practice payment</p>
+      <h1>Pay {{ payment.amount|peso }}</h1>
+      <p>To {{ store.name }} for order {{ order.ref }}.</p>
+      <p class="note">This is the practice payment page (the sandbox). No real money moves. On the real store this is PayMongo's page.</p>
+      <form method="post" class="stack">
+        {{ csrf() }}
+        <fieldset class="choice-cards sandbox-methods">
+          <legend class="field-label">Pay with</legend>
+          <label class="choice-card"><input type="radio" name="method" value="gcash" checked><span><strong>GCash</strong></span></label>
+          <label class="choice-card"><input type="radio" name="method" value="paymaya"><span><strong>Maya</strong></span></label>
+          <label class="choice-card"><input type="radio" name="method" value="card"><span><strong>Card</strong></span></label>
+        </fieldset>
+        <button class="button button-wide" type="submit" name="action" value="pay">Pay {{ payment.amount|peso }}</button>
+        <div class="form-actions sandbox-other">
+          <button class="button button-quiet" type="submit" name="action" value="fail">Make it fail (practice)</button>
+          <button class="button button-quiet" type="submit" name="action" value="cancel">Go back without paying</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, empty, product_picture %}
+{% block title %}Cart - {{ g.store.name }}{% endblock %}
+{% block content %}
+  <div class="page-head"><h1>Your Cart</h1></div>
+  {% if items %}
+    <div class="checkout-layout">
+      <section class="card cart-lines">
+        {% for item in items %}
+          {% set unit = item.unit %}
+          {% set problem = summary.problems[item.id] %}
+          <div class="cart-line{% if problem %} has-problem{% endif %}">
+            <a class="cart-picture" href="{{ url_for('shop.product', product_id=unit.product_id) }}" tabindex="-1" aria-hidden="true">{{ product_picture(unit.product) }}</a>
+            <div class="cart-what">
+              <a class="cart-name" href="{{ url_for('shop.product', product_id=unit.product_id) }}">{{ unit.product.name }}</a>
+              <span class="row-sub">{{ unit.name }}{% if unit.pieces_per_unit > 1 %} ({{ unit.pieces_per_unit|pieces }}){% endif %} · {{ unit.retail_price|peso }} each</span>
+              {% if problem %}<p class="field-error">{{ problem }}</p>{% endif %}
+            </div>
+            <form method="post" action="{{ url_for('cart.update_item', item_id=item.id) }}" class="cart-qty">
+              {{ csrf() }}
+              <label class="visually-hidden" for="cart-qty-{{ item.id }}">How many</label>
+              <input class="qty-input" id="cart-qty-{{ item.id }}" type="number" name="quantity" value="{{ item.quantity }}" min="0" max="999" inputmode="numeric">
+              <button class="button button-small button-quiet" type="submit">Update</button>
+            </form>
+            <span class="cart-total price">{{ item.line_total|peso }}</span>
+            <form method="post" action="{{ url_for('cart.remove', item_id=item.id) }}" class="cart-remove">
+              {{ csrf() }}
+              <button class="link-button" type="submit">Remove<span class="visually-hidden"> {{ unit.product.name }}</span></button>
+            </form>
+          </div>
+        {% endfor %}
+      </section>
+
+      <aside class="card order-summary">
+        <h2>Summary</h2>
+        <dl class="sum-rows">
+          <div><dt>Items, at retail price</dt><dd>{{ summary.subtotal|peso }}</dd></div>
+        </dl>
+        <p class="card-note">Delivery fee comes next. Then the cashier checks your order and gives the wholesale price where it applies. You see the final total before you pay.</p>
+        {% if summary.can_check_out %}
+          <a class="button button-wide" href="{{ url_for('cart.checkout_page') }}">Check out</a>
+        {% else %}
+          <p class="field-error">Fix the lines marked in red first.</p>
+        {% endif %}
+        <a class="button button-quiet button-wide" href="{{ url_for('shop.products') }}">Keep shopping</a>
+      </aside>
+    </div>
+  {% else %}
+    {{ empty('Your Cart Is Empty', 'Find what you need, then press "Add to cart".', url_for('shop.products'), 'Shop all products') }}
+  {% endif %}
+{% endblock %}

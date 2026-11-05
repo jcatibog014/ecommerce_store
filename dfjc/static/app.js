@@ -171,7 +171,172 @@ function setUpRowLinks() {
   });
 }
 
+// Money arrives in centavos, like the server keeps it: 2050 -> "₱20.50".
+function peso(centavos) {
+  const sign = centavos < 0 ? "-" : "";
+  const value = Math.abs(centavos);
+  const whole = Math.floor(value / 100).toLocaleString("en-US");
+  return `${sign}₱${whole}.${String(value % 100).padStart(2, "0")}`;
+}
+
+// Checkout: the address only shows for delivery, and the total follows the barangay's fee.
+// The server works everything out again; this only helps the shopper see it.
+function setUpCheckout() {
+  const form = document.querySelector("[data-checkout]");
+  if (!form) return;
+  const summary = form.querySelector("[data-summary]");
+  const subtotal = Number(summary.dataset.subtotal) - Number(summary.dataset.discount || 0);
+  const freeDelivery = Boolean(summary.dataset.freeDelivery);
+  const newFields = form.querySelector("[data-new-address-fields]");
+  const update = () => {
+    const how = (form.querySelector('input[name="fulfilment"]:checked') || {}).value || "pickup";
+    form.querySelectorAll("[data-show-when]").forEach((part) => { part.hidden = part.dataset.showWhen !== how; });
+    const address = form.querySelector('input[name="address_id"]:checked');
+    const isNew = !address || "newAddress" in address.dataset;
+    if (newFields) newFields.hidden = !isNew;
+    let fee = null;
+    if (how === "delivery") {
+      if (isNew) {
+        const option = form.querySelector("[data-area-select]");
+        const chosen = option && option.selectedOptions[0];
+        if (chosen && chosen.dataset.fee) fee = Number(chosen.dataset.fee);
+      } else {
+        fee = Number(address.dataset.fee);
+      }
+    }
+    form.querySelector("[data-fee-text]").textContent = fee === null ? "Depends on the barangay" : peso(fee);
+    const charged = how === "delivery" && fee && !freeDelivery ? fee : 0;
+    form.querySelector("[data-total-text]").textContent = peso(subtotal + charged);
+  };
+  form.addEventListener("change", update);
+  update();
+}
+
+// The cashier's Price This Order form: each line's amount and the total follow the
+// Retail / Wholesale choice, and "Set all to" changes every line at once.
+function setUpPriceForm() {
+  const form = document.querySelector("[data-price-form]");
+  if (!form) return;
+  const fee = Number(form.dataset.deliveryFee);
+  const update = () => {
+    let subtotal = 0;
+    form.querySelectorAll("[data-line]").forEach((row) => {
+      const choice = row.querySelector("input[type=radio]:checked").value;
+      const amount = Number(row.dataset.quantity) * Number(row.dataset[choice]);
+      row.querySelector("[data-line-total]").textContent = peso(amount);
+      row.classList.toggle("is-wholesale", choice === "wholesale");
+      subtotal += amount;
+    });
+    form.querySelector("[data-subtotal-text]").textContent = peso(subtotal);
+    form.querySelector("[data-total-text]").textContent = peso(subtotal + fee);
+  };
+  const all = form.querySelector("[data-price-all]");
+  all.hidden = false;
+  all.querySelectorAll("[data-set-all]").forEach((button) => {
+    button.addEventListener("click", () => {
+      form.querySelectorAll(`input[type=radio][value="${button.dataset.setAll}"]:not(:disabled)`)
+        .forEach((radio) => { radio.checked = true; });
+      update();
+    });
+  });
+  form.addEventListener("change", update);
+  update();
+}
+
+// The counter: the change shows as the cash given is typed (the server works it out again).
+function setUpChange() {
+  const form = document.querySelector("[data-change-form]");
+  if (!form) return;
+  const total = Number(form.dataset.total);
+  const input = form.querySelector('input[name="cash_given"]');
+  const line = form.querySelector("[data-change-text]");
+  const update = () => {
+    const raw = input.value.replace(/[,\s₱]/g, "");
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) { line.hidden = true; return; }
+    const [whole, cents = ""] = raw.split(".");
+    const given = Number(whole) * 100 + Number((cents + "00").slice(0, 2));
+    line.hidden = false;
+    line.classList.toggle("is-short", given < total);
+    line.textContent = given < total ? `Short by ${peso(total - given)}` : `Change: ${peso(given - total)}`;
+  };
+  input.addEventListener("input", update);
+}
+
+// "Print receipt" (the page's print styles show only the receipt).
+function setUpPrint() {
+  document.querySelectorAll("[data-print]").forEach((button) => {
+    button.hidden = false;
+    button.addEventListener("click", () => window.print());
+  });
+}
+
+// Charts: a tooltip for each day's bar (mouse, finger or keyboard focus).
+function setUpChartTips() {
+  const tip = document.querySelector("[data-chart-tip]");
+  if (!tip) return;
+  const show = (target) => {
+    const [title, ...lines] = target.dataset.tip.split("|");
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    tip.replaceChildren(heading, ...lines.map((line) => {
+      const row = document.createElement("span");
+      row.textContent = line;
+      row.style.display = "block";
+      return row;
+    }));
+    tip.hidden = false;
+    const box = target.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, box.left + box.width / 2 - tip.offsetWidth / 2));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${Math.max(8, box.top - tip.offsetHeight - 8)}px`;
+  };
+  document.querySelectorAll("[data-tip]").forEach((target) => {
+    target.addEventListener("mouseenter", () => show(target));
+    target.addEventListener("focus", () => show(target));
+    target.addEventListener("mouseleave", () => { tip.hidden = true; });
+    target.addEventListener("blur", () => { tip.hidden = true; });
+  });
+}
+
+// The phone app: the service worker (/sw.js) makes the store installable. Browsers that can
+// install it fire "beforeinstallprompt"; then the Install button in Settings shows.
+function setUpInstall() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Without it the site still works; it just can't be installed.
+    });
+  }
+  const section = document.querySelector("[data-install]");
+  if (!section) return;
+  const button = section.querySelector("[data-install-button]");
+  const done = section.querySelector("[data-installed]");
+  if (window.matchMedia("(display-mode: standalone)").matches) {
+    done.hidden = false;
+    return;
+  }
+  let offer = null;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    offer = event;
+    button.hidden = false;
+  });
+  button.addEventListener("click", async () => {
+    if (!offer) return;
+    offer.prompt();
+    await offer.userChoice;
+    offer = null;
+    button.hidden = true;
+  });
+  window.addEventListener("appinstalled", () => { button.hidden = true; done.hidden = false; });
+}
+
 setUpTheme();
+setUpChartTips();
+setUpInstall();
+setUpChange();
+setUpPrint();
+setUpCheckout();
+setUpPriceForm();
 setUpToasts();
 setUpMenu();
 setUpUserMenu();

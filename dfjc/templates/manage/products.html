@@ -4,7 +4,9 @@
 {% block content %}
   <div class="page-head">
     <h1>Products</h1>
-    {% if can(MANAGE_PRODUCTS) %}<div class="actions"><a class="button" href="{{ url_for('manage.new_product') }}">Add product</a></div>{% endif %}
+    {% if can(MANAGE_PRODUCTS) %}<div class="actions">
+      {% if can(IMPORT_PRODUCTS) %}<a class="button button-quiet" href="{{ url_for('manage.import_products') }}">Import from a file</a>{% endif %}
+      <a class="button" href="{{ url_for('manage.new_product') }}">Add product</a></div>{% endif %}
   </div>
 
   <nav class="tabs" aria-label="Which products">

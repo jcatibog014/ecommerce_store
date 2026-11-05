@@ -26,7 +26,7 @@ OUT = Path(__file__).parent / "screenshots"
 DESKTOP = {"width": 1280, "height": 800}
 PHONE = {"width": 390, "height": 844}
 
-# (file name, View As role, address, theme, screen size). {water} is the demo's bottled water.
+# (file name, View As role, address, theme, screen size). {...} addresses are found by address().
 PAGES = [
     ("home.png", "shopper", "/", "light", DESKTOP),
     ("home-dark.png", "shopper", "/", "dark", DESKTOP),
@@ -45,6 +45,39 @@ PAGES = [
     ("store-details.png", "owner", "/manage/store", "light", DESKTOP),
     ("low-stock.png", "cashier", "/manage/products?show=low", "light", DESKTOP),
     ("settings.png", "shopper", "/settings/", "light", DESKTOP),
+    ("cart.png", "shopper", "/cart", "light", DESKTOP),
+    ("checkout.png", "shopper", "/checkout", "light", DESKTOP),
+    ("my-orders.png", "shopper", "/orders", "light", DESKTOP),
+    ("order-waiting.png", "shopper", "{my-order:Waiting for the cashier}", "light", DESKTOP),
+    ("order-priced.png", "shopper", "{my-order:Confirmed}", "light", DESKTOP),
+    ("phone-order.png", "shopper", "{my-order:Confirmed}", "light", PHONE),
+    ("phone-cart.png", "shopper", "/cart", "light", PHONE),
+    ("orders-queue.png", "cashier", "/manage/orders", "light", DESKTOP),
+    ("price-order.png", "cashier", "{bulk-order}", "light", DESKTOP),
+    ("price-order-dark.png", "cashier", "{bulk-order}", "dark", DESKTOP),
+    ("delivery-areas.png", "owner", "/manage/delivery-areas", "light", DESKTOP),
+    ("order-pay.png", "shopper", "{my-order:Waiting for payment}", "light", DESKTOP),
+    ("order-paid.png", "shopper", "{my-order:Paid}", "light", DESKTOP),
+    ("staff-paid-order.png", "cashier", "{staff-order:confirmed:Paid}", "light", DESKTOP),
+    ("staff-refunded-order.png", "cashier", "{staff-order:cancelled:Refunded}", "light", DESKTOP),
+    ("orders-waiting.png", "cashier", "/manage/orders?tab=waiting", "light", DESKTOP),
+    ("packing.png", "cashier", "/manage/packing", "light", DESKTOP),
+    ("packing-dark.png", "cashier", "/manage/packing", "dark", DESKTOP),
+    ("deliveries.png", "rider", "/deliveries", "light", DESKTOP),
+    ("phone-deliveries.png", "rider", "/deliveries", "light", PHONE),
+    ("rider-cash.png", "cashier", "/manage/rider-cash", "light", DESKTOP),
+    ("product-stock.png", "cashier", "{water-admin}#stock", "light", DESKTOP),
+    ("stock-history.png", "cashier", "/manage/stock", "light", DESKTOP),
+    ("import.png", "owner", "/manage/products/import", "light", DESKTOP),
+    ("order-on-the-way.png", "shopper", "{my-order:Delivered}", "light", DESKTOP),
+    ("close-shift.png", "cashier", "/counter/shift", "light", DESKTOP),
+    ("shifts.png", "owner", "/counter/shifts", "light", DESKTOP),
+    ("favorites.png", "shopper", "/favorites", "light", DESKTOP),
+    ("addresses.png", "shopper", "/addresses", "light", DESKTOP),
+    ("promos.png", "owner", "/manage/promos", "light", DESKTOP),
+    ("insights.png", "owner", "/manage/insights?range=30", "light", DESKTOP),
+    ("insights-dark.png", "owner", "/manage/insights", "dark", DESKTOP),
+    ("phone-insights.png", "owner", "/manage/insights", "light", PHONE),
 ]
 
 
@@ -75,7 +108,20 @@ def save(page, name):
 
 
 def address(page, path):
-    """{water} is the demo's bottled water in the shop, {water-admin} the same product's staff page."""
+    """{water} is the demo's bottled water in the shop, {water-admin} the same product's staff page,
+    {my-order:<status>} the visitor's order with that status, {bulk-order} the reseller's order to price."""
+    if path.startswith("{my-order:"):
+        page.goto(f"{BASE}/orders")
+        row = page.locator("tr", has_text=path[len("{my-order:"):-1])
+        return row.locator(".row-link").first.get_attribute("href")
+    if path.startswith("{staff-order:"):
+        tab, words = path[len("{staff-order:"):-1].split(":")
+        page.goto(f"{BASE}/manage/orders?tab={tab}")
+        return page.locator("tr", has=page.locator(".pill", has_text=words)).locator(".row-link").first.get_attribute("href")
+    if path == "{bulk-order}":
+        page.goto(f"{BASE}/manage/orders")
+        row = page.locator("tr", has_text="Marites Santos").filter(has_text="Has bulk items")
+        return row.locator(".row-link").first.get_attribute("href")
     if path.startswith("{water"):
         name, _, anchor = path.partition("#")
         page.goto(f"{BASE}/products?q=bottled+water")
@@ -84,6 +130,33 @@ def address(page, path):
             link = link.replace("/products/", "/manage/products/")
         return link + (f"#{anchor}" if anchor else "")
     return path
+
+
+def shoot_sandbox(page):
+    """The practice payment page: press Pay on the order that waits for payment, then go back."""
+    view_as(page, "shopper")
+    page.goto(f"{BASE}{address(page, '{my-order:Waiting for payment}')}")
+    page.get_by_role("button", name="Pay ₱").click()
+    page.wait_for_url("**/sandbox/pay/**")
+    save(page, "sandbox.png")
+    page.get_by_role("button", name="Go back without paying").click()
+
+
+def shoot_counter(page):
+    """The counter with a sale rung up, then its receipt."""
+    view_as(page, "cashier")
+    page.goto(f"{BASE}/counter?q=pancit")
+    page.locator(".counter-unit", has_text="Box of 72").first.get_by_role("button", name="Wholesale").click()
+    page.goto(f"{BASE}/counter?q=soy")
+    page.locator(".counter-unit", has_text="Bottle").first.get_by_role("button", name="Retail").click()
+    page.goto(f"{BASE}/counter?q=candles")
+    page.locator(".counter-unit", has_text="Piece").first.locator("input[name=quantity]").fill("4")
+    page.locator(".counter-unit", has_text="Piece").first.get_by_role("button", name="Retail").click()
+    page.locator('input[name="cash_given"]').fill("2000")
+    save(page, "counter.png")
+    page.get_by_role("button", name="Pay and print receipt").click()
+    page.wait_for_url("**/counter/sales/**")
+    save(page, "receipt.png")
 
 
 def shoot_visitor_pages(browser):
@@ -108,6 +181,8 @@ def main():
             view_as(page, role)
             page.goto(f"{BASE}{address(page, path)}")
             save(page, name)
+        shoot_sandbox(pages[("light", DESKTOP["width"])])
+        shoot_counter(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

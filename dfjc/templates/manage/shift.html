@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, money_field, field %}
+{% block title %}Close Shift - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('counter.index') }}">&larr; Counter</a>
+  <div class="page-head">
+    <h1>Close My Shift</h1>
+    <p class="page-sub">Open since {{ shift.opened_at|nice_datetime }}. Count the cash in the drawer, then type it below.</p>
+  </div>
+  <div class="grid-2">
+    <section class="card">
+      <h2>What Should Be in the Drawer</h2>
+      <dl class="sum-rows">
+        <div><dt>Cash at the start</dt><dd>{{ summary.opening|peso }}</dd></div>
+        <div><dt>Counter sales ({{ summary.sale_count }})</dt><dd>{{ summary.sales|peso }}</dd></div>
+        <div><dt>Cash from pickup orders</dt><dd>{{ summary.pickup|peso }}</dd></div>
+        <div><dt>Cash received from riders</dt><dd>{{ summary.riders|peso }}</dd></div>
+        <div class="sum-total"><dt>Expected</dt><dd>{{ summary.expected|peso }}</dd></div>
+      </dl>
+    </section>
+    <form method="post" class="card stack" data-confirm="Close your shift? You can't sell on it after this.">
+      {{ csrf() }}
+      <h2>Your Count</h2>
+      {{ money_field('counted_cash', 'Cash counted in the drawer', attrs='required autofocus') }}
+      {{ field('note', 'Note', hint='Optional', attrs='maxlength="300" placeholder="Paid the ice delivery from the drawer"') }}
+      <div class="form-actions"><button class="button" type="submit">Close shift</button></div>
+    </form>
+  </div>
+{% endblock %}

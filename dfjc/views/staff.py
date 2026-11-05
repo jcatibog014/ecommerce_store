@@ -1,4 +1,4 @@
-"""The owner's pages for people and the store: staff, invite links, store details.
+"""The owner's pages for people and the store: staff, invite links, store details, delivery areas.
 Also the page an invite link opens (/join/<token>), where a cashier or rider makes their login."""
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy import select
@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .. import auth, db, forms, invites
 from ..dates import utcnow
-from ..models import CASHIER, OWNER, RIDER, STAFF_ROLES, Invite, Store, User
+from ..models import CASHIER, OWNER, RIDER, STAFF_ROLES, DeliveryArea, Invite, Store, User
 from ..permissions import MANAGE_STAFF, MANAGE_STORE, needs
 from ..stores import get_in_store
 
@@ -92,6 +92,59 @@ def store():
             return redirect(url_for("staff.store"))
     return render_template("manage/store.html", values=values or store_values(g.store), errors=errors), \
         400 if errors else 200
+
+
+def read_area(form):
+    errors = {}
+    values = {}
+    values["name"], errors["name"] = forms.text(form, "name", 80, required=True, label="A name")
+    values["fee"], errors["fee"] = forms.price(form, "fee")
+    values["sort_order"], errors["sort_order"] = forms.whole_number(form, "sort_order", 0, 999, default=0)
+    values["is_active"] = forms.checkbox(form, "is_active") if "is_active_sent" in form else True
+    return values, {key: value for key, value in errors.items() if value}
+
+
+@bp.route("/manage/delivery-areas", methods=["GET", "POST"])
+@needs(MANAGE_STORE, "Only the owner can change delivery areas.")
+def areas():
+    s = db.session()
+    errors, values = {}, {"sort_order": 0}
+    if request.method == "POST":
+        values, errors = read_area(request.form)
+        if not errors:
+            try:
+                s.add(DeliveryArea(store_id=g.store.id, **values))
+                s.commit()
+            except IntegrityError:
+                s.rollback()
+                errors["name"] = "There is already an area with that name."
+            else:
+                flash(f"We deliver to {values['name']} now.")
+                return redirect(url_for("staff.areas"))
+    found = s.scalars(select(DeliveryArea).where(DeliveryArea.store_id == g.store.id)
+                      .order_by(DeliveryArea.sort_order, DeliveryArea.name)).all()
+    return render_template("manage/areas.html", areas=found, values=values, errors=errors), 400 if errors else 200
+
+
+@bp.post("/manage/delivery-areas/<int:area_id>")
+@needs(MANAGE_STORE, "Only the owner can change delivery areas.")
+def save_area(area_id):
+    s = db.session()
+    area = get_in_store(s, DeliveryArea, area_id, g.store)
+    values, errors = read_area(request.form)
+    if errors:
+        flash(f"{area.name} wasn't saved: " + " ".join(errors.values()), "error")
+        return redirect(url_for("staff.areas"))
+    for name, value in values.items():
+        setattr(area, name, value)
+    try:
+        s.commit()
+    except IntegrityError:
+        s.rollback()
+        flash("There is already an area with that name.", "error")
+        return redirect(url_for("staff.areas"))
+    flash(f"{area.name} is saved." if area.is_active else f"{area.name} is saved. Shoppers can't choose it now.")
+    return redirect(url_for("staff.areas"))
 
 
 def store_values(current):

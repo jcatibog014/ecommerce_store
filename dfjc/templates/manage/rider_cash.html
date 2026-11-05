@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, empty %}
+{% block title %}Rider Cash - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Rider Cash</h1>
+    <p class="page-sub">Cash riders collected on delivery. Count it, then press Receive.</p>
+  </div>
+  {% if holding %}
+    {% for rider, amount, held in holding %}
+      <form method="post" action="{{ url_for('fulfil.receive', rider_id=rider.id) }}" class="card"
+            data-confirm="Did you count {{ amount|peso }} from {{ rider.name }}?">
+        {{ csrf() }}
+        <div class="card-head">
+          <h2>{{ rider.name }}: {{ amount|peso }}</h2>
+          <button class="button" type="submit">Receive {{ amount|peso }}</button>
+        </div>
+        <table class="lines-table">
+          <thead><tr><th scope="col">Order</th><th scope="col">Shopper</th><th scope="col">Collected</th><th scope="col" class="num">Amount</th></tr></thead>
+          <tbody>
+            {% for payment in held %}
+              <tr>
+                {# The exact payments shown here are the ones received, nothing added since. #}
+                <th scope="row"><input type="hidden" name="payment_id" value="{{ payment.id }}">{{ payment.order.ref }}</th>
+                <td>{{ payment.order.customer_name }}</td>
+                <td>{{ payment.paid_at|nice_datetime }}</td>
+                <td class="num">{{ payment.amount|peso }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </form>
+    {% endfor %}
+  {% else %}
+    {{ empty('No Cash to Receive', 'When a rider collects cash on delivery, it shows here until they hand it over.') }}
+  {% endif %}
+  {% if history %}
+    <h2>Received Before</h2>
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th scope="col">When</th><th scope="col">Rider</th><th scope="col">Received by</th><th scope="col" class="num">Amount</th></tr></thead>
+        <tbody>
+          {% for remittance in history %}
+            <tr><td>{{ remittance.created_at|nice_datetime }}</td><td>{{ remittance.rider.name if remittance.rider else '' }}</td>
+              <td>{{ remittance.received_by.name if remittance.received_by else '' }}</td><td class="num">{{ remittance.amount|peso }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -24,7 +24,7 @@
           <tr>
             <th scope="row">{{ person.name }}{% if person.id == g.user.id %} <span class="muted">(you)</span>{% endif %}</th>
             <td>{{ role_pill(person.role) }}</td>
-            <td><span class="row-sub">{{ person.email }}</span>{% if person.mobile %}<span class="row-sub">{{ person.mobile }}</span>{% endif %}</td>
+            <td><span class="row-sub">{{ person.email }}</span>{% if person.mobile %}<span class="row-sub">{{ person.mobile|mobile }}</span>{% endif %}</td>
             <td>
               {% if person.role == owner %}
                 <span class="muted">Always</span>

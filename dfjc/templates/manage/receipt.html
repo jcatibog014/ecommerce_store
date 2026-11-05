@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% block title %}Receipt {{ sale.receipt_no }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="no-print">
+    <a class="back-link" href="{{ url_for('counter.index') }}">&larr; Counter</a>
+  </div>
+  <div class="receipt-layout">
+    {# A narrow receipt, like a printed slip. Only this part prints (style.css @media print). #}
+    <article class="receipt{% if sale.voided_at %} is-voided{% endif %}">
+      <header class="receipt-head">
+        <strong>{{ g.store.name }}</strong>
+        {% if g.store.address %}<span>{{ g.store.address }}</span>{% endif %}
+        {% if g.store.phone %}<span>{{ g.store.phone }}</span>{% endif %}
+      </header>
+      <p class="receipt-meta">{{ sale.receipt_no }} · {{ sale.created_at|nice_datetime }}<br>Cashier: {{ sale.cashier.first_name if sale.cashier else '' }}</p>
+      {% if sale.voided_at %}<p class="receipt-void">VOIDED: {{ sale.void_reason }}</p>{% endif %}
+      <table class="receipt-lines">
+        {% for line in sale.lines %}
+          <tr><td colspan="2">{{ line.product_name }} ({{ line.unit_name }}){% if line.price_type == 'wholesale' %} W{% endif %}</td></tr>
+          <tr><td class="receipt-qty">{{ line.quantity }} x {{ line.unit_price|peso }}</td><td class="num">{{ line.line_total|peso }}</td></tr>
+        {% endfor %}
+      </table>
+      <dl class="receipt-sums">
+        <div><dt>Total</dt><dd>{{ sale.total|peso }}</dd></div>
+        <div><dt>Cash</dt><dd>{{ sale.cash_given|peso }}</dd></div>
+        <div><dt>Change</dt><dd>{{ sale.change|peso }}</dd></div>
+      </dl>
+      {% if sale.price_type != 'retail' %}<p class="receipt-meta">W = wholesale price</p>{% endif %}
+      <p class="receipt-thanks">Salamat po! Thank you!</p>
+    </article>
+    <div class="no-print receipt-actions">
+      <div class="callout callout-good">
+        <h2>Change: {{ sale.change|peso }}</h2>
+        <p>Total {{ sale.total|peso }}, cash {{ sale.cash_given|peso }}.</p>
+        <div class="actions">
+          <button class="button" type="button" data-print hidden>Print receipt</button>
+          <a class="button button-quiet" href="{{ url_for('counter.index') }}">Next customer</a>
+        </div>
+      </div>
+      {% if not sale.voided_at and not sale.shift.closed_at %}
+        <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack"
+              data-confirm="Void {{ sale.receipt_no }}? Its items go back in stock, and you give back {{ sale.total|peso }}.">
+          {{ csrf() }}
+          <h2>A Mistake?</h2>
+          {{ field('reason', 'Why void it?', attrs='maxlength="200" required placeholder="Rang up the wrong size"') }}
+          <div class="form-actions"><button class="button button-danger" type="submit">Void sale</button></div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

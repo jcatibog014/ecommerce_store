@@ -19,8 +19,11 @@ def home():
     s = db.session()
     categories = catalog.categories(s, g.store)
     counts = catalog.category_counts(s, g.store)
+    from .. import vouchers
+    from ..dates import local_today
     return render_template("shop/home.html", categories=[c for c in categories if counts.get(c.id)],
-                           counts=counts, newest=catalog.newest(s, g.store))
+                           counts=counts, newest=catalog.newest(s, g.store),
+                           promos=vouchers.home_promos(s, g.store, local_today()))
 
 
 @bp.get("/products")
@@ -46,7 +49,10 @@ def product(product_id):
     item = catalog.shop_product(db.session(), g.store, product_id)
     if item is None:
         abort(404)
-    return render_template("shop/product.html", product=item)
+    from ..permissions import SHOP, can
+    from .extras import favorite_ids
+    saved = g.user is not None and can(SHOP) and item.id in favorite_ids(db.session(), g.user)
+    return render_template("shop/product.html", product=item, saved=saved)
 
 
 def photo_response(photo_id, field):

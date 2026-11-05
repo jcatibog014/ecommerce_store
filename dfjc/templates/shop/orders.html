@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, status_pill, total_label %}
+{% block title %}My Orders - {{ g.store.name }}{% endblock %}
+{% macro order_rows(found) %}
+  <div class="table-card">
+    <table class="data-table">
+      <thead><tr><th scope="col">Order</th><th scope="col">Placed</th><th scope="col">How</th><th scope="col">Items</th><th scope="col" class="num">Total</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for order in found %}
+          <tr data-href="{{ url_for('my_orders.detail', ref=order.ref) }}">
+            <th scope="row"><a class="row-link" href="{{ url_for('my_orders.detail', ref=order.ref) }}">{{ order.ref }}</a></th>
+            <td>{{ order.placed_at|nice_datetime }}</td>
+            <td>{{ 'Pickup' if order.fulfilment == 'pickup' else 'Delivery to ' ~ order.area_name }}</td>
+            <td>{{ order.item_count }}</td>
+            <td class="num"><strong>{{ order.total|peso }}</strong>{% if not order.is_priced and order.status != 'cancelled' %}<span class="row-sub">estimated</span>{% endif %}</td>
+            <td>{{ status_pill(order) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+{% block content %}
+  <div class="page-head">
+    <h1>My Orders</h1>
+  </div>
+  {% if open_orders or past_orders %}
+    {% if open_orders %}
+      <h2>In Progress</h2>
+      {{ order_rows(open_orders) }}
+    {% endif %}
+    {% if past_orders %}
+      <h2>Past Orders</h2>
+      {{ order_rows(past_orders) }}
+    {% endif %}
+  {% else %}
+    {{ empty('No Orders Yet', 'Your orders show here, with what the store is doing with each one.', url_for('shop.products'), 'Start shopping') }}
+  {% endif %}
+{% endblock %}

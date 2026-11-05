@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Stock History - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Stock History</h1>
+    <p class="page-sub">Every change to stock: what, why, how many and who. The newest first.</p>
+  </div>
+  <nav class="tabs" aria-label="Why stock changed">
+    <a href="{{ url_for('manage.stock_history') }}"{% if not reason %} aria-current="page"{% endif %}>All</a>
+    {% for value, label in reasons.items() %}
+      <a href="{{ url_for('manage.stock_history', reason=value) }}"{% if reason == value %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% if moves %}
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th scope="col">When</th><th scope="col">Product</th><th scope="col">Why</th><th scope="col" class="num">Change</th><th scope="col" class="num">After</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          {% for move in moves %}
+            <tr{% if move.product %} data-href="{{ url_for('manage.product', product_id=move.product_id, _anchor='stock') }}"{% endif %}>
+              <td>{{ move.created_at|nice_datetime }}</td>
+              <th scope="row">{% if move.product %}<a class="row-link" href="{{ url_for('manage.product', product_id=move.product_id, _anchor='stock') }}">{{ move.product.name }}</a>{% endif %}</th>
+              <td>{{ MOVE_REASONS[move.reason] }}{% if move.note %}<span class="row-sub">{{ move.note }}</span>{% endif %}</td>
+              <td class="num {{ 'change-up' if move.change > 0 else 'change-down' }}">{{ '{:+,}'.format(move.change) }}</td>
+              <td class="num">{{ '{:,}'.format(move.stock_after) }}</td>
+              <td>{{ move.by.first_name if move.by else '' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty('Nothing Here Yet', 'Restocks, stock counts and packed orders show up here.') }}
+  {% endif %}
+{% endblock %}

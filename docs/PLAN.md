@@ -12,14 +12,14 @@ The user wants a mini e-commerce store to practise **transactions, payment integ
 - **one PR per stage**: I stop after each stage for review.
 
 ## Progress
-- [x] Stage 1: setup and catalog (this PR: `stage-1-setup`)
-- [ ] Stage 2: cart, checkout and order state
-- [ ] Stage 3: payments
-- [ ] Stage 4: fulfilment and store admin
-- [ ] Stage 5: walk-in sales
-- [ ] Stage 6: shopper extras and promos
-- [ ] Stage 7: insights and phone app
-- [ ] Stage 8: demo, README and deploy
+- [x] Stage 1: setup and catalog (PR #1)
+- [x] Stage 2: cart, checkout and order state
+- [x] Stage 3: payments (stages 2 to 8 share one PR, branch `stages-2-to-8`, a commit per stage)
+- [x] Stage 4: fulfilment and store admin
+- [x] Stage 5: walk-in sales
+- [x] Stage 6: shopper extras and promos
+- [x] Stage 7: insights and phone app
+- [x] Stage 8: demo, README and deploy (render.yaml, docs/DEPLOY.md). Going live is the owner's step.
 
 ## Setup
 - Repo: https://github.com/jcatibog014/ecommerce_store (made by the user). First step after approval: `git clone` it into a new folder `C:\Users\USER\Documents\Workspace\ecommerce_store`, make `.venv`, and branch `stage-1-setup`. Package `dfjc`, local port **5009** (ShiroMoto has 5008).

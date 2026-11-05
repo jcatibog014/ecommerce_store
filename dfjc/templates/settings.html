@@ -37,6 +37,30 @@
       </form>
     </section>
 
+    {% if g.role == 'shopper' %}
+      <section class="setting">
+        <div class="setting-text">
+          <h2>Order Emails</h2>
+          <p>An email when your order is priced, paid, ready or on the way. They go to {{ g.user.email }}.</p>
+        </div>
+        <form method="post" data-watch-changes>
+          {{ csrf() }}
+          <input type="hidden" name="action" value="emails">
+          <fieldset class="stack plain-fieldset" {{ locked }}>
+            <label class="check"><input type="checkbox" name="order_emails" value="1"{% if g.user.order_emails %} checked{% endif %}> Email me about my orders</label>
+            <div class="form-actions"><button class="button" type="submit">Save</button></div>
+          </fieldset>
+        </form>
+      </section>
+      <section class="setting">
+        <div class="setting-text">
+          <h2>Saved Addresses</h2>
+          <p>Where we deliver. You choose one when you check out.</p>
+        </div>
+        <div class="form-actions setting-account-actions"><a class="button button-quiet" href="{{ url_for('extras.addresses') }}">Manage addresses</a></div>
+      </section>
+    {% endif %}
+
     <section class="setting">
       <div class="setting-text">
         <h2>Password</h2>
@@ -52,6 +76,28 @@
           <div class="form-actions"><button class="button" type="submit">Change password</button></div>
         </fieldset>
       </form>
+    </section>
+
+    <section class="setting" data-install>
+      <div class="setting-text">
+        <h2>Phone App</h2>
+        <p>Put DFJC Store on your phone's home screen, so it opens like an app.</p>
+      </div>
+      <div class="stack">
+        <p class="pill pill-on" data-installed hidden>Installed on this device</p>
+        <div class="form-actions setting-account-actions">
+          <button class="button" type="button" data-install-button hidden>Install app</button>
+        </div>
+        <details>
+          <summary class="link-button">On an iPhone or iPad</summary>
+          <ol class="install-steps">
+            <li>Open this site in Safari.</li>
+            <li>Press the Share button (a square with an arrow).</li>
+            <li>Press <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+          </ol>
+        </details>
+        <p class="card-note">On Android, Chrome also offers <strong>Install app</strong> in its menu (the three dots).</p>
+      </div>
     </section>
 
     <section class="setting">

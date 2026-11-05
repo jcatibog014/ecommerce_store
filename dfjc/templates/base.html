@@ -6,6 +6,11 @@
   <title>{% block title %}{{ g.store.name if g.store else APP_NAME }}{% endblock %}</title>
   <meta name="description" content="DFJC Store: wholesale and retail sari-sari goods. Order online for pickup or delivery.">
   <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='icons/icon-32.png') }}" sizes="32x32" type="image/png">
+  {# Installing the store on a phone: the app's name, icons and colours. #}
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-title" content="DFJC Store">
   <meta name="theme-color" content="#fbf7ef" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1b1612" media="(prefers-color-scheme: dark)">
   {# Before the stylesheet asks for it, so the name and headings don't jump when it arrives. #}

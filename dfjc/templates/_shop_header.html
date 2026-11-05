@@ -1,25 +1,37 @@
-{% from "_macros.html" import csrf, wordmark, search_icon %}
-{# The store's header, for shoppers and visitors: a bamboo strip, the name, search and the account.
-   The menu only moves between pages; dark mode and Log out are in Settings (and the account menu). #}
+{% from "_macros.html" import csrf, wordmark, search_icon, cart_icon %}
+{# The store's header, for shoppers and visitors: a bamboo strip, the name, search, the pages and
+   the account. The menu only moves between pages; dark mode and Log out are in Settings (and the
+   account menu). On phones: name and account on the first row, search, then the page links. #}
+{% set endpoint = request.endpoint or '' %}
 <header class="shop-header">
   <div class="shop-header-inner">
     {{ wordmark(url_for('shop.home')) }}
     {% if g.store %}
       <form class="shop-search" method="get" action="{{ url_for('shop.products') }}" role="search">
         <label class="visually-hidden" for="shop-q">Search products</label>
-        <input id="shop-q" type="search" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'shop.products' else '' }}" placeholder="Search rice, noodles, soap..." maxlength="80">
+        <input id="shop-q" type="search" name="q" value="{{ request.args.get('q', '') if endpoint == 'shop.products' else '' }}" placeholder="Search rice, noodles, soap..." maxlength="80">
         <button class="shop-search-button" type="submit" aria-label="Search">{{ search_icon() }}</button>
       </form>
     {% endif %}
-    <nav class="shop-nav" aria-label="Main">
-      <a href="{{ url_for('shop.products') }}"{% if request.endpoint in ('shop.products', 'shop.product') %} aria-current="page"{% endif %}>All Products</a>
+    <nav class="shop-nav shop-pages" aria-label="Main">
+      <a href="{{ url_for('shop.products') }}"{% if endpoint in ('shop.products', 'shop.product') %} aria-current="page"{% endif %}>All Products</a>
+      {% if g.user %}<a href="{{ url_for('my_orders.index') }}"{% if endpoint.startswith('my_orders.') %} aria-current="page"{% endif %}>My Orders</a>{% endif %}
+    </nav>
+    <div class="shop-nav shop-account">
       {% if g.user %}
+        <a class="cart-link" href="{{ url_for('cart.index') }}"{% if endpoint.startswith('cart.') %} aria-current="page"{% endif %}>
+          {{ cart_icon() }}<span class="cart-word">Cart</span>{% if cart_count %}<span class="badge">{{ cart_count }}<span class="visually-hidden"> items</span></span>{% endif %}
+        </a>
         <details class="user-menu shop-user-menu" data-user-menu>
           <summary>
             <span class="avatar" aria-hidden="true">{{ g.user.name[:1]|upper }}</span>
             <span class="user-menu-name"><span class="visually-hidden">Account menu for </span>{{ g.user.first_name }}</span>
           </summary>
           <div class="user-menu-items">
+            {% if can(SHOP) %}
+              <a href="{{ url_for('extras.favorites') }}">Favorites</a>
+              <a href="{{ url_for('extras.addresses') }}">Addresses</a>
+            {% endif %}
             <a href="{{ url_for('settings.index') }}">Settings</a>
             <form method="post" action="{{ url_for('auth.logout') }}">
               {{ csrf() }}
@@ -28,9 +40,9 @@
           </div>
         </details>
       {% else %}
-        <a href="{{ url_for('auth.login') }}"{% if request.endpoint == 'auth.login' %} aria-current="page"{% endif %}>Log In</a>
+        <a href="{{ url_for('auth.login') }}"{% if endpoint == 'auth.login' %} aria-current="page"{% endif %}>Log In</a>
         <a class="button button-small" href="{{ url_for('auth.signup') }}">Sign up</a>
       {% endif %}
-    </nav>
+    </div>
   </div>
 </header>

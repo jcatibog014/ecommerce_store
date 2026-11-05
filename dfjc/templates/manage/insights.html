@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Insights - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% set now = report.now %}
+  {% set chart = report.chart %}
+  <div class="page-head">
+    <h1>Insights</h1>
+    <p class="page-sub">{{ report.first|nice_day }} to {{ report.last|nice_day }}. Online orders count once they are priced; cancelled and refunded orders and voided counter sales don't count.</p>
+  </div>
+
+  {# The one filter, in one row above everything it changes. #}
+  <nav class="tabs" aria-label="Time range">
+    {% for key, label in ranges.items() %}
+      <a href="{{ url_for('insights.index', range=key if key != '7' else None) }}"{% if range_key == key %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="stat-tiles">
+    <div class="stat-tile">
+      <p class="stat-label">Sales</p>
+      <p class="stat-number">{{ now.total|peso }}</p>
+      <p class="stat-note">{% if report.change is none %}Nothing in the {{ report.days }} days before{% else %}{{ '{:+d}'.format(report.change) }}% from the {{ report.days }} days before{% endif %}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Number of sales</p>
+      <p class="stat-number">{{ now.count }}</p>
+      <p class="stat-note">Online orders and counter sales</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Average sale</p>
+      <p class="stat-number">{{ now.average|peso }}</p>
+      <p class="stat-note">The {{ report.days }} days before: {{ report.before.average|peso }}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Online</p>
+      <p class="stat-number">{{ report.online_share }}%</p>
+      <p class="stat-note">{{ now.online|peso }} online, {{ now.counter|peso }} at the counter</p>
+    </div>
+  </div>
+
+  <section class="card chart-card">
+    <div class="card-head">
+      <h2>Sales per Day</h2>
+      {# Two series: a legend is always there, with each one's total. #}
+      <ul class="legend" aria-label="Legend">
+        <li><span class="swatch swatch-online" aria-hidden="true"></span>Online {{ now.online|peso }}</li>
+        <li><span class="swatch swatch-counter" aria-hidden="true"></span>Counter {{ now.counter|peso }}</li>
+      </ul>
+    </div>
+    <svg class="day-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img"
+         aria-label="Sales per day, online and at the counter. The table below has every number.">
+      {% for line in chart.grid %}
+        <line class="grid-line" x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ line.y }}" y2="{{ line.y }}"></line>
+        <text class="axis-text" x="{{ chart.left - 8 }}" y="{{ line.y + 4 }}" text-anchor="end">{{ '₱{:,.0f}'.format(line.value / 100) }}</text>
+      {% endfor %}
+      {% for bar in chart.bars %}
+        {% if bar.counter_path %}<path class="bar-counter" d="{{ bar.counter_path }}"></path>{% endif %}
+        {% if bar.online_path %}<path class="bar-online" d="{{ bar.online_path }}"></path>{% endif %}
+        {% if bar.label %}<text class="axis-text" x="{{ bar.center }}" y="{{ chart.base + 18 }}" text-anchor="middle">{{ bar.label }}</text>{% endif %}
+        {# A hit area wider than the bar, for the tooltip (mouse, finger or keyboard). #}
+        <rect class="hit" x="{{ bar.hit_x }}" y="{{ chart.top }}" width="{{ bar.hit_w }}" height="{{ chart.base - chart.top }}" tabindex="0"
+              data-tip="{{ bar.day|nice_day }}|Online {{ bar.online|peso }}|Counter {{ bar.counter|peso }}|Total {{ bar.total|peso }}">
+          <title>{{ bar.day|nice_day }}: online {{ bar.online|peso }}, counter {{ bar.counter|peso }}</title></rect>
+      {% endfor %}
+      <line class="base-line" x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ chart.base }}" y2="{{ chart.base }}"></line>
+    </svg>
+    <details class="table-view">
+      <summary>Show as a table</summary>
+      <table class="lines-table">
+        <thead><tr><th scope="col">Day</th><th scope="col" class="num">Online</th><th scope="col" class="num">Counter</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>{% for row in report.rows %}<tr><th scope="row">{{ row.day|nice_day }}</th><td class="num">{{ row.online|peso }}</td><td class="num">{{ row.counter|peso }}</td><td class="num">{{ row.total|peso }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </details>
+  </section>
+
+  <div class="grid-2">
+    <section class="card">
+      <h2>Best Sellers</h2>
+      {% if report.best %}
+        <ol class="hbars">
+          {% for (name, pieces, amount), width in report.best %}
+            <li>
+              <span class="hbar-label">{{ name }} <span class="row-sub">{{ '{:,}'.format(pieces) }} pieces</span></span>
+              <span class="hbar-track"><svg class="hbar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="{{ width }}" height="10" rx="1.5"></rect></svg></span>
+              <span class="hbar-value">{{ amount|peso }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="card-note">No sales in these days yet.</p>
+      {% endif %}
+    </section>
+
+    <div>
+      <section class="card">
+        <h2>Paid How</h2>
+        <ol class="hbars">
+          {% for (label, amount), width in report.payments %}
+            <li>
+              <span class="hbar-label">{{ label }}</span>
+              <span class="hbar-track"><svg class="hbar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="{{ width }}" height="10" rx="1.5"></rect></svg></span>
+              <span class="hbar-value">{{ amount|peso }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+      <section class="card">
+        <h2>Retail and Wholesale</h2>
+        <p class="stat-number">{{ report.wholesale_share }}% <span class="stat-inline">at the wholesale price</span></p>
+        <span class="meter"><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="meter-track" x="0" y="0" width="100" height="10" rx="2"></rect><rect x="0" y="0" width="{{ report.wholesale_share }}" height="10" rx="2"></rect></svg></span>
+        <p class="card-note">Items sold: {{ report.kinds.wholesale|peso }} at wholesale, {{ report.kinds.retail|peso }} at retail (before delivery fees and vouchers).</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Running Low</h2><a href="{{ url_for('manage.products', show='low') }}">All low stock</a></div>
+        {% if report.low %}
+          <ul class="plain-list low-list">
+            {% for product in report.low %}<li><a href="{{ url_for('manage.product', product_id=product.id, _anchor='stock') }}">{{ product.name }}</a> <span class="stock stock-low">{{ '{:,}'.format(product.available_pieces) }} left</span></li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="card-note">Nothing is running low.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+  <div class="chart-tip" data-chart-tip role="status" hidden></div>
+{% endblock %}

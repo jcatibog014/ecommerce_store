@@ -25,7 +25,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import db, mailer, permissions, stores
 from .dates import utcnow
-from .models import CASHIER, OWNER, SHOPPER, Store, User
+from .models import CASHIER, OWNER, RIDER, SHOPPER, PaymentEvent, Store, User
 
 bp = Blueprint("auth", __name__)
 
@@ -161,8 +161,11 @@ def check_login(s, store, email, password, moment):
 
 def home_for(user):
     """Where someone lands after logging in: staff at their work, shoppers at the shop."""
-    if user is not None and permissions.role_of(user) in (OWNER, CASHIER):
-        return url_for("manage.products")
+    role = permissions.role_of(user) if user is not None else None
+    if role in (OWNER, CASHIER):
+        return url_for("staff_orders.index")
+    if role == RIDER:
+        return url_for("fulfil.deliveries")
     return url_for("shop.home")
 
 
@@ -378,6 +381,10 @@ def demo():
         return redirect(url_for("shop.home"))  # this browser already has one
     # Old demos go first. Deleting the store deletes everything in it (ON DELETE CASCADE).
     s.execute(delete(Store).where(Store.is_demo.is_(True), Store.demo_expires_at < moment)
+              .execution_options(synchronize_session=False))
+    # The Sandbox's practice events don't belong to a store; old ones go too.
+    s.execute(delete(PaymentEvent).where(PaymentEvent.session_id.startswith("sbx_"),
+                                         PaymentEvent.received_at < moment - DEMO_LIFETIME - DEMO_LIFETIME)
               .execution_options(synchronize_session=False))
     s.commit()
     if s.scalar(select(func.count()).select_from(Store).where(Store.is_demo.is_(True))) >= MAX_DEMOS:

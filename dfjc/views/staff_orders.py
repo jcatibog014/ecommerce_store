@@ -7,9 +7,9 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from .. import db, forms, orders
+from .. import db, forms, gateways, orders, payments
 from ..dates import utcnow
-from ..models import CANCELLED, CONFIRMED, PAID, PLACED, REFUNDED, WHOLESALE, Order
+from ..models import AWAITING_PAYMENT, CANCELLED, CONFIRMED, PAID, PLACED, REFUNDED, WHOLESALE, Order
 from ..permissions import PRICE_ORDERS, SEE_ORDERS, can, needs
 
 bp = Blueprint("staff_orders", __name__, url_prefix="/manage/orders")
@@ -17,7 +17,7 @@ bp = Blueprint("staff_orders", __name__, url_prefix="/manage/orders")
 # The queue's tabs: (statuses, oldest first?)
 TABS = {
     "to-price": ("To Price", (PLACED,), True),
-    # "Waiting for Payment" (AWAITING_PAYMENT) joins these with online payment in stage 3.
+    "waiting": ("Waiting for Payment", (AWAITING_PAYMENT,), True),
     "confirmed": ("Confirmed", (CONFIRMED, PAID), True),
     "cancelled": ("Cancelled", (CANCELLED, REFUNDED), False),
     "all": ("All Orders", None, False),
@@ -26,7 +26,8 @@ TABS = {
 
 def store_order(ref):
     order = db.session().scalar(select(Order).where(Order.ref == ref, Order.store_id == g.store.id)
-                                .options(selectinload(Order.lines), selectinload(Order.events)))
+                                .options(selectinload(Order.lines), selectinload(Order.events),
+                                         selectinload(Order.payments)))
     if order is None:
         abort(404)
     return order
@@ -96,6 +97,7 @@ def cancel(ref):
         flash("This order can't be cancelled any more.", "error")
         return redirect(url_for("staff_orders.detail", ref=ref))
     try:
+        payments.close_open(s, order, gateways.for_store(g.store))
         orders.cancel(s, order, g.user, utcnow(), reason)
         s.commit()
     except (orders.OrderChanged, orders.MoveNotAllowed) as problem:
@@ -113,6 +115,7 @@ def init_app(app):
             return {"to_price_count": to_price_count(db.session(), g.store)}
         return {"to_price_count": 0}
 
+    app.jinja_env.globals.update(refundable=payments.refundable, PAID_WITH_LABELS=payments.PAID_WITH_LABELS)
     app.jinja_env.globals.update(status_label=orders.status_label, steps_of=orders.steps,
                                  shopper_can_cancel=orders.shopper_can_cancel,
                                  staff_can_cancel=orders.staff_can_cancel, EVENT_WORDS=orders.EVENT_WORDS)

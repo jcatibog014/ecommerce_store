@@ -67,8 +67,22 @@
 
       <section class="card">
         <h2><span class="step-number" aria-hidden="true"></span> Payment</h2>
-        <p data-show-when="pickup"><strong>Cash at pickup.</strong> Pay at the counter when you pick up your order.</p>
-        <p data-show-when="delivery"><strong>Cash on delivery.</strong> Pay the rider when your order arrives. Please have the exact amount if you can.</p>
+        {% set pay = form.get('payment', 'cash') %}
+        {% if errors.payment %}<p class="field-error">{{ errors.payment }}</p>{% endif %}
+        <div class="choice-cards">
+          <label class="choice-card">
+            <input type="radio" name="payment" value="cash"{% if pay != 'online' %} checked{% endif %}>
+            <span><strong>Cash</strong>
+              <span class="row-sub" data-show-when="pickup">Pay at the counter when you pick up your order.</span>
+              <span class="row-sub" data-show-when="delivery">Pay the rider when your order arrives.</span></span>
+          </label>
+          {% set too_small = summary.subtotal < online_minimum %}
+          <label class="choice-card">
+            <input type="radio" name="payment" value="online"{% if pay == 'online' %} checked{% endif %}{% if not online or too_small %} disabled{% endif %}>
+            <span><strong>Pay online</strong>
+              <span class="row-sub">{% if not online %}Not available yet.{% elif too_small %}For orders of ₱20 or more.{% else %}GCash, Maya or card, on PayMongo's secure page, after the cashier prices your order.{% endif %}</span></span>
+          </label>
+        </div>
         <p class="card-note">You pay the final total, after the cashier checks the prices.</p>
       </section>
 

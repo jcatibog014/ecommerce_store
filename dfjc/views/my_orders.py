@@ -3,7 +3,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from .. import db, forms, orders
+from .. import db, forms, gateways, orders, payments
 from ..dates import utcnow
 from ..models import DONE_STATUSES, OPEN_STATUSES, Order
 from ..permissions import SHOP, needs
@@ -14,7 +14,8 @@ bp = Blueprint("my_orders", __name__)
 
 def my_order(ref):
     order = db.session().scalar(select(Order).where(Order.ref == ref, Order.user_id == g.user.id)
-                                .options(selectinload(Order.lines), selectinload(Order.events)))
+                                .options(selectinload(Order.lines), selectinload(Order.events),
+                                         selectinload(Order.payments)))
     if order is None:
         abort(404)
     return order
@@ -32,7 +33,9 @@ def index():
 @bp.get("/orders/<ref>")
 @needs(SHOP, STAFF_CANT_SHOP)
 def detail(ref):
-    return render_template("shop/order.html", order=my_order(ref))
+    order = my_order(ref)
+    online_problem = payments.online_problem(g.store, order.total)
+    return render_template("shop/order.html", order=order, online_problem=online_problem)
 
 
 @bp.post("/orders/<ref>/cancel")
@@ -46,6 +49,7 @@ def cancel(ref):
         return redirect(url_for("my_orders.detail", ref=ref))
     reason, _ = forms.text(request.form, "reason", orders.CANCEL_REASON_MAX)
     try:
+        payments.close_open(s, order, gateways.for_store(g.store))
         orders.cancel(s, order, g.user, utcnow(), reason or "Cancelled by the shopper")
         s.commit()
     except (orders.OrderChanged, orders.MoveNotAllowed) as problem:

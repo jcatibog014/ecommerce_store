@@ -9,7 +9,7 @@
   <nav class="tabs" aria-label="Which orders">
     {% for key, (label, statuses, _) in tabs.items() %}
       <a href="{{ url_for('staff_orders.index', tab=key if key != 'to-price' else None) }}"{% if tab == key %} aria-current="page"{% endif %}>
-        {{ label }}{% if statuses and tab_counts[key] and key in ('to-price', 'confirmed') %} <span class="badge{% if key != 'to-price' %} badge-quiet{% endif %}">{{ tab_counts[key] }}</span>{% endif %}</a>
+        {{ label }}{% if statuses and tab_counts[key] and key in ('to-price', 'waiting', 'confirmed') %} <span class="badge{% if key != 'to-price' %} badge-quiet{% endif %}">{{ tab_counts[key] }}</span>{% endif %}</a>
     {% endfor %}
   </nav>
 

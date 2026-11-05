@@ -187,12 +187,16 @@ def price_order(s, order, choices, cashier, moment, version, note=""):
 def steps(order):
     """[(label, state)] where state is "done" (reached), "now" (the latest step reached) or "next".
     A cancelled order shows only "Placed" as reached."""
-    road = [PLACED, CONFIRMED, PACKING, READY]
+    # Online orders have a Paid step; cash is paid at the end (at pickup or on delivery).
+    online = getattr(order, "payment_method", "") == "online"
+    road = [PLACED, CONFIRMED] + ([PAID] if online else []) + [PACKING, READY]
     road += [PICKED_UP] if order.fulfilment == PICKUP else [OUT_FOR_DELIVERY, DELIVERED]
     labels = {PLACED: "Placed", CONFIRMED: "Priced", PACKING: "Packing",
               READY: "Ready for pickup" if order.fulfilment == PICKUP else "Ready to go",
-              PICKED_UP: "Picked up", OUT_FOR_DELIVERY: "On the way", DELIVERED: "Delivered"}
-    where = {AWAITING_PAYMENT: CONFIRMED, PAID: CONFIRMED}.get(order.status, order.status)
+              PICKED_UP: "Picked up", OUT_FOR_DELIVERY: "On the way", DELIVERED: "Delivered", PAID: "Paid"}
+    where = {AWAITING_PAYMENT: CONFIRMED}.get(order.status, order.status)
+    if where == PAID and not online:
+        where = CONFIRMED
     if where in (CANCELLED, REFUNDED):
         return [(labels[step], "done" if index == 0 else "next") for index, step in enumerate(road)]
     current = road.index(where)

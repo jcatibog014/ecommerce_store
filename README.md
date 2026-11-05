@@ -2,7 +2,7 @@
 
 DFJC Store is a website for a real store. The store sells **wholesale and retail**, like a big sari-sari store. People can buy one piece, one pack, or a whole case.
 
-This is **stage 2 of 8**. Now shoppers can fill a cart and order for pickup or delivery, and they pay in cash. The cashier checks every order and gives the wholesale price where it applies. Paying online, packing and the counter come in the next stages. The full plan is in [docs/PLAN.md](docs/PLAN.md).
+Now shoppers can fill a cart and order for pickup or delivery. They pay in cash or online (GCash, Maya or card, through PayMongo). The cashier checks every order and gives the wholesale price where it applies. The full plan is in [docs/PLAN.md](docs/PLAN.md).
 
 ![The home page](docs/screenshots/home.png)
 
@@ -16,7 +16,7 @@ This is **stage 2 of 8**. Now shoppers can fill a cart and order for pickup or d
 - See if a product is in stock, almost gone, or out of stock.
 - Put products in a cart, then check out.
 - Choose **pickup** at the store, or **delivery** to your barangay (each barangay has its own fee).
-- Pay in cash: at the counter, or to the rider.
+- Pay in cash (at the counter, or to the rider), or **pay online** with GCash, Maya or a card after the cashier prices the order.
 - See every order in **My Orders**: what the store is doing now, and what happened when.
 - Cancel an order before the store starts packing it.
 - Make an account with your name, email and mobile number.
@@ -28,6 +28,7 @@ This is **stage 2 of 8**. Now shoppers can fill a cart and order for pickup or d
 - Chooses **Retail** or **Wholesale** for each line (or for all lines at once). The total changes as you click.
 - Confirms the price. Then the shopper sees the final total.
 - Cancels an order with a reason. The items go back on sale.
+- Gives the money back (a **refund**) for an order that was paid online.
 
 **The owner:**
 
@@ -47,9 +48,25 @@ This is **stage 2 of 8**. Now shoppers can fill a cart and order for pickup or d
 1. The shopper puts products in the cart and checks out. The store **holds** those pieces, so nobody else can buy them.
 2. The order waits for the cashier. The shopper sees an **estimated** total at retail price.
 3. The cashier chooses retail or wholesale for each line and confirms. The shopper sees the **final** total.
-4. The shopper pays in cash at pickup or on delivery. (Packing and delivery come in stage 4.)
+4. The shopper pays: in cash at pickup or on delivery, or online right away on PayMongo's page.
 
 If two shoppers try to buy the last pieces at the same moment, only one gets them. The other sees how many are left. If someone presses "Place order" twice, there is still only one order.
+
+## How paying online works
+
+- The store hears about a payment in **two ways**: PayMongo sends a signed message (a "webhook"), and the shopper comes back to the store's page. Either can come first. The order is marked paid **only once**.
+- A message with a wrong signature is refused. The same message sent twice changes nothing.
+- If money comes in for an order that was cancelled, it is not lost: the cashier sees "Give the money back".
+- The demo uses a **practice payment page** (the sandbox). No real money moves.
+
+### Turn on PayMongo test mode (for the owner)
+
+1. Make a free account at [paymongo.com](https://www.paymongo.com) and open the **Developers** page. Copy the **test secret key** (it starts with `sk_test_`).
+2. Make a **webhook** for `https://<your site>/payments/webhook` with the event `checkout_session.payment.paid`. Copy its **secret key** (it starts with `whsk_`).
+3. On Render, add two environment variables: `PAYMONGO_SECRET_KEY` and `PAYMONGO_WEBHOOK_SECRET`.
+4. Order something and pay. PayMongo's test pages let you approve or fail a payment, and their docs list test card numbers.
+
+Without the keys, your own computer uses the practice page, and the live site only takes cash.
 
 ## Pictures
 
@@ -84,6 +101,12 @@ If two shoppers try to buy the last pieces at the same moment, only one gets the
 | Cashier: price an order | ![Retail or wholesale for each line](docs/screenshots/price-order.png) |
 | Cashier: price an order (dark mode) | ![Pricing in dark mode](docs/screenshots/price-order-dark.png) |
 | Owner: delivery areas | ![Barangays and delivery fees](docs/screenshots/delivery-areas.png) |
+| An order to pay online | ![Pay now, or pay in cash instead](docs/screenshots/order-pay.png) |
+| The practice payment page | ![The sandbox payment page](docs/screenshots/sandbox.png) |
+| A paid order | ![Paid with GCash](docs/screenshots/order-paid.png) |
+| Cashier: waiting for payment | ![Orders waiting for payment](docs/screenshots/orders-waiting.png) |
+| Cashier: a paid order | ![Payments and Cancel and Refund](docs/screenshots/staff-paid-order.png) |
+| Cashier: a refunded order | ![A refunded order](docs/screenshots/staff-refunded-order.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
 

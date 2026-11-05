@@ -3,6 +3,8 @@
 {% from "_order_parts.html" import order_steps, lines_table, timeline %}
 {% block title %}Order {{ order.ref }} - {{ g.store.name }}{% endblock %}
 {% block content %}
+  {% set latest = order.latest_payment %}
+  {% set pending = latest if latest and latest.status == 'pending' else None %}
   <a class="back-link" href="{{ url_for('my_orders.index') }}">&larr; My Orders</a>
   <div class="page-head">
     <h1>Order {{ order.ref }}</h1>
@@ -15,7 +17,33 @@
   {% if order.status == 'placed' %}
     <div class="callout">
       <h2>Waiting for the Cashier</h2>
-      <p>The cashier checks your order and gives the wholesale price where it applies. The final total shows here when it's done. You pay {{ 'when you pick it up' if order.fulfilment == 'pickup' else 'the rider on delivery' }}.</p>
+      <p>The cashier checks your order and gives the wholesale price where it applies. The final total shows here when it's done.
+        {% if order.is_online %}Then you pay online.{% else %}You pay {{ 'when you pick it up' if order.fulfilment == 'pickup' else 'the rider on delivery' }}.{% endif %}</p>
+    </div>
+  {% elif order.status == 'awaiting_payment' %}
+    <div class="callout callout-pay">
+      <h2>Priced: {{ order.total|peso }}. Please Pay Now</h2>
+      <p>{% if order.price_type == 'wholesale' %}You got the wholesale price on every item. {% elif order.price_type == 'mixed' %}You got the wholesale price on some items. {% endif %}
+        Pay with GCash, Maya or a card on PayMongo's secure page. We start packing when the payment is in.</p>
+      {% if order.cashier_note %}<p class="cashier-note"><strong>From the cashier:</strong> {{ order.cashier_note }}</p>{% endif %}
+      {% if latest and latest.status == 'failed' %}<p class="field-error">Your last payment didn't go through. You can try again.</p>{% endif %}
+      {% if pending %}<p class="card-note">You started a payment {{ pending.created_at|nice_time }}. Finish it on the payment page, or check whether it came in.</p>{% endif %}
+      <div class="actions">
+        <form method="post" action="{{ url_for('payments.pay', ref=order.ref) }}">
+          {{ csrf() }}
+          <button class="button" type="submit"{% if online_problem %} disabled{% endif %}>{{ 'Go back to the payment page' if pending else 'Pay ' ~ order.total|peso }}</button>
+        </form>
+        {% if pending %}
+          <form method="post" action="{{ url_for('payments.returned', ref=order.ref, payment_id=pending.id) }}">
+            {{ csrf() }}<button class="button button-quiet" type="submit">Check payment</button>
+          </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('payments.pay_cash', ref=order.ref) }}"
+              data-confirm="Pay in cash instead? {{ 'You pay at the counter.' if order.fulfilment == 'pickup' else 'You pay the rider.' }}">
+          {{ csrf() }}<button class="button button-quiet" type="submit">Pay in cash instead</button>
+        </form>
+      </div>
+      {% if online_problem %}<p class="field-error">{{ online_problem }}</p>{% endif %}
     </div>
   {% elif order.status == 'confirmed' %}
     <div class="callout callout-good">
@@ -23,12 +51,29 @@
       <p>{% if order.price_type == 'wholesale' %}You got the wholesale price on every item. {% elif order.price_type == 'mixed' %}You got the wholesale price on some items. {% endif %}
         Pay {{ order.total|peso }} in cash {{ 'when you pick it up' if order.fulfilment == 'pickup' else 'to the rider' }}. We'll tell you when it's {{ 'ready' if order.fulfilment == 'pickup' else 'on the way' }}.</p>
       {% if order.cashier_note %}<p class="cashier-note"><strong>From the cashier:</strong> {{ order.cashier_note }}</p>{% endif %}
+      {% if not online_problem %}
+        <form method="post" action="{{ url_for('payments.pay_online', ref=order.ref) }}">
+          {{ csrf() }}<button class="link-button" type="submit">Pay online instead</button>
+        </form>
+      {% endif %}
+    </div>
+  {% elif order.status == 'paid' %}
+    <div class="callout callout-good">
+      <h2>Paid: {{ order.total|peso }}</h2>
+      {% set paid = order.paid_payment %}
+      <p>Thank you! You paid {% if paid %}with {{ PAID_WITH_LABELS.get(paid.paid_with, 'online') }} on {{ paid.paid_at|nice_datetime }}{% else %}online{% endif %}. We'll tell you when it's {{ 'ready' if order.fulfilment == 'pickup' else 'on the way' }}.</p>
+    </div>
+  {% elif order.status == 'refunded' %}
+    <div class="callout callout-stop">
+      <h2>Cancelled and Refunded</h2>
+      <p>{{ order.events[-1].note or 'This order was cancelled.' }} Your money ({{ order.total|peso }}) was sent back. It can take a few days to show.</p>
     </div>
   {% elif order.status == 'cancelled' %}
     <div class="callout callout-stop">
       <h2>Cancelled</h2>
-      {% set last = order.events[-1] %}
-      <p>{{ last.note or 'This order was cancelled.' }} Nothing was charged.</p>
+      {% set reason = order.events|selectattr('to_status', 'equalto', 'cancelled')|list %}
+      <p>{{ (reason[-1].note if reason else '') or 'This order was cancelled.' }}
+        {% if order.payments|selectattr('status', 'equalto', 'refunded')|list %}Your payment was sent back.{% elif order.payments|selectattr('needs_refund')|list %}A payment came in after it was cancelled. The store will send it back.{% else %}Nothing was charged.{% endif %}</p>
     </div>
   {% endif %}
 

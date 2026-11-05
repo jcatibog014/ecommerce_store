@@ -210,8 +210,9 @@ def test_every_demo_order_page_has_its_example(app, demo):
         visitor = db.session().scalar(select(User).where(User.store_id == store.id, User.name == "Ana Reyes"))
         mine = {order.ref: order.status for order in found if order.user_id == visitor.id}
         every = {order.ref: order.status for order in found}
-    assert sorted(mine.values()) == ["cancelled", "confirmed", "placed"]
-    words = {"placed": "Waiting for the Cashier", "confirmed": "Priced:", "cancelled": "I ordered the wrong size."}
+    assert sorted(mine.values()) == ["awaiting_payment", "cancelled", "confirmed", "paid", "placed"]
+    words = {"placed": "Waiting for the Cashier", "confirmed": "Priced:", "cancelled": "I ordered the wrong size.",
+             "awaiting_payment": "last payment didn", "paid": "You paid with GCash"}
     for ref, status in mine.items():
         assert words[status] in demo.get(f"/orders/{ref}").get_data(as_text=True), ref
     view_as(demo, "cashier")

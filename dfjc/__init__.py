@@ -29,7 +29,8 @@ CONTENT_SECURITY_POLICY = "; ".join([
     "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    # After "Pay", the browser goes to PayMongo's payment page (a form's redirect counts as form-action).
+    "form-action 'self' https://checkout.paymongo.com",
     "frame-ancestors 'none'",
 ])
 
@@ -47,6 +48,13 @@ def create_app(test_config=None):
         # Gmail address + app password for emails (mailer.py). Without them emails go to the terminal.
         MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+        # PayMongo test (or live) keys, from the PayMongo dashboard. Without them the real store
+        # uses the Sandbox on your own computer, and online payment is off on the live site.
+        PAYMONGO_SECRET_KEY=os.environ.get("PAYMONGO_SECRET_KEY"),
+        PAYMONGO_WEBHOOK_SECRET=os.environ.get("PAYMONGO_WEBHOOK_SECRET"),
+        ON_RENDER=on_render,
+        # PayMongo's webhook can't send our form token: its signature is checked instead.
+        CSRF_EXEMPT=("payments.webhook",),
         # Cookie safety: not readable by JavaScript (Flask's default), not sent
         # with forms from other sites, and only over HTTPS on the live site.
         SESSION_COOKIE_SAMESITE="Lax",
@@ -67,8 +75,8 @@ def create_app(test_config=None):
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
     from . import auth, db, formatting, permissions
-    from .models import CATEGORY_ICONS, FULFILMENTS, PAYMENT_METHODS, PRICE_TYPES, ROLE_LABELS
-    from .views import cart, manage, my_orders, settings, shop, staff, staff_orders
+    from .models import CATEGORY_ICONS, FULFILMENTS, PAYMENT_METHODS, PAYMENT_STATUS_LABELS, PRICE_TYPES, ROLE_LABELS
+    from .views import cart, manage, my_orders, payments, settings, shop, staff, staff_orders
 
     db.init_app(app)
     auth.init_app(app)
@@ -78,11 +86,13 @@ def create_app(test_config=None):
     cart.init_app(app)
     staff_orders.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, shop.bp, cart.bp, my_orders.bp, manage.bp, staff_orders.bp, staff.bp, settings.bp):
+    for blueprint in (auth.bp, shop.bp, cart.bp, my_orders.bp, payments.bp, manage.bp, staff_orders.bp, staff.bp,
+                      settings.bp):
         app.register_blueprint(blueprint)
 
     app.jinja_env.globals.update(APP_NAME="DFJC Store", ROLE_LABELS=ROLE_LABELS, CATEGORY_ICONS=CATEGORY_ICONS,
-                                 FULFILMENTS=FULFILMENTS, PAYMENT_METHODS=PAYMENT_METHODS, PRICE_TYPES=PRICE_TYPES)
+                                 FULFILMENTS=FULFILMENTS, PAYMENT_METHODS=PAYMENT_METHODS, PRICE_TYPES=PRICE_TYPES,
+                                 PAYMENT_STATUS_LABELS=PAYMENT_STATUS_LABELS)
 
     @app.get("/healthz")
     def healthz():

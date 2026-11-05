@@ -203,13 +203,14 @@ def fill_orders(s, store, people, moment):
     home.area = areas["San Isidro"]
     s.add(home)
 
-    def order(who, lines, ago, fulfilment=PICKUP, address=None, note=""):
+    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False):
         user = people[who]
         for product_name, unit_name, quantity in lines:
             checkout.add_to_cart(s, user, units[(product_name, unit_name)], quantity, moment - ago)
         s.flush()
         area = address.area if address else None
-        choice = {"fulfilment": fulfilment, "payment_method": "cash_pickup" if fulfilment == PICKUP else "cod",
+        method = "online" if online else "cash_pickup" if fulfilment == PICKUP else "cod"
+        choice = {"fulfilment": fulfilment, "payment_method": method,
                   "area": area, "address": address.one_line if address else "", "note": note}
         placed, _ = checkout.place_order(s, user, store, choice, checkout.new_checkout_key(), moment - ago)
         return placed
@@ -245,7 +246,51 @@ def fill_orders(s, store, people, moment):
     order("ramon", [("Corned beef 150 g", "Can", 3), ("Evaporated milk 370 mL", "Can", 2)], timedelta(minutes=4),
           DELIVERY, ramon_home)
 
+    fill_payments(s, store, people, order, price, moment, ramon_home)
+
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
     checkout.add_to_cart(s, people["ana"], units[("Instant pancit canton 60 g", "Pack")], 6, moment)
     s.flush()
+
+
+# ---------- Stage 3: paying online (with the Sandbox, the demo's practice gateway) ----------
+
+def fill_payments(s, store, people, order, price, moment, ramon_home):
+    """Ana has one order paid with GCash and one waiting for payment (her first try failed);
+    Ramon's paid order was cancelled and refunded. All go through payments.py, like the real thing."""
+    from . import payments
+    from .gateways import Sandbox
+    from .models import DELIVERY
+
+    sandbox = Sandbox()
+    minutes, hours = timedelta(minutes=1), timedelta(hours=1)
+
+    def urls(payment):
+        return "", ""
+
+    def pay(placed, ago, result="pay", paid_with="gcash"):
+        payment = payments.start(s, placed, sandbox, moment - ago, urls)
+        event = payments.PAID_EVENT if result == "pay" else payments.FAILED_EVENT
+        payments.handle_event(s, "sbx_evt_" + secrets.token_urlsafe(10), event, payment.session_id, f"sbx_pay_{payment.id}",
+                              paid_with, moment - ago + 2 * minutes)
+        return payment
+
+    paid = order("ana", [("3-in-1 coffee sachet", "Box of 30", 1), ("Bath soap 90 g", "Pack of 6", 1)], 5 * hours,
+                 online=True)
+    price(paid, 4 * hours)
+    pay(paid, 3 * hours)
+
+    waiting = order("ana", [("Brown sugar", "Kilo", 2), ("Evaporated milk 370 mL", "Can", 4),
+                            ("All-purpose flour", "Kilo", 1)], 50 * minutes, online=True,
+                    note="For a birthday cake this weekend.")
+    price(waiting, 30 * minutes)
+    pay(waiting, 20 * minutes, result="fail", paid_with="card")
+
+    refunded = order("ramon", [("Well-milled rice", "Sack of 25 kg", 1)], 2 * timedelta(days=1), DELIVERY,
+                     ramon_home, online=True)
+    price(refunded, 2 * timedelta(days=1) - hours, wholesale_bulk=False)
+    pay(refunded, 2 * timedelta(days=1) - 2 * hours, paid_with="paymaya")
+    s.flush()
+    payments.refund(s, refunded, people["lorna"], moment - timedelta(days=1),
+                    "Sorry, the rice sack was torn when it arrived from the supplier.", sandbox)

@@ -740,6 +740,19 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .callout > :last-child { margin-bottom: 0; }
 .callout-good { background: var(--green-soft); border-left-color: var(--green); }
 .callout-stop { background: var(--surface-soft); border-left-color: var(--rule-strong); }
+.callout-pay { background: var(--accent-soft); border-left-color: var(--accent); }
+.callout .actions { margin-top: .75rem; }
+.payment-pending { background: var(--tile-4-bg); color: var(--tile-4-ink); }
+.payment-paid { background: var(--green-soft); color: var(--green); }
+.payment-failed { background: var(--red-soft); color: var(--red); }
+.payment-expired, .payment-refunded { background: var(--surface-soft); color: var(--ink-soft); border: 1px solid var(--rule-strong); }
+.payment-list li { display: flex; justify-content: space-between; align-items: center; gap: .5rem 1rem; padding: .45rem 0; border-bottom: 1px solid var(--rule); }
+.payment-list li:last-child { border-bottom: 0; }
+.sandbox { display: flex; justify-content: center; padding: 1rem 0 2rem; }
+.sandbox-card { width: 100%; max-width: 28rem; border-top: 6px solid var(--tile-4-ink); }
+.sandbox-methods { margin: 0; padding: 0; border: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sandbox-methods legend { margin-bottom: .4rem; }
+.sandbox-other { justify-content: space-between; }
 .cashier-note, .shopper-note { padding: .6rem .8rem; border-radius: var(--radius-small); background: var(--bamboo-soft); }
 
 .order-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.25rem; align-items: start; }

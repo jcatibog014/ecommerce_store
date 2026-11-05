@@ -26,7 +26,7 @@ from sqlalchemy.orm import selectinload
 
 from . import forms
 from .models import (
-    CASH_PICKUP, COD, DELIVERY, PICKUP, PLACED, RETAIL, Address, CartItem, DeliveryArea, Order, OrderEvent, OrderLine,
+    CASH_PICKUP, COD, DELIVERY, ONLINE, PICKUP, PLACED, RETAIL, Address, CartItem, DeliveryArea, Order, OrderEvent, OrderLine,
     Product, ProductUnit,
 )
 
@@ -98,16 +98,19 @@ def cart_summary(items):
 
 # ---------- Reading the checkout form ----------
 
-def read_checkout(form, user, areas, addresses):
+def read_checkout(form, user, areas, addresses, online_ok=False):
     """Returns (choice, errors). choice has fulfilment, payment_method, area, address (text),
-    new_address (an Address to save, or None) and note."""
+    new_address (an Address to save, or None) and note. online_ok: this store takes online payment."""
     errors = {}
     choice = {"fulfilment": form.get("fulfilment"), "area": None, "address": "", "new_address": None}
     if choice["fulfilment"] not in (PICKUP, DELIVERY):
         errors["fulfilment"] = "Choose pickup or delivery."
         choice["fulfilment"] = PICKUP
-    # Cash only for now; paying online comes with PayMongo (stage 3).
-    choice["payment_method"] = CASH_PICKUP if choice["fulfilment"] == PICKUP else COD
+    pay = form.get("payment", "cash")
+    if pay == "online" and not online_ok:
+        errors["payment"] = "Online payment is off for now. Please choose cash."
+    choice["payment_method"] = ONLINE if pay == "online" and online_ok else (
+        CASH_PICKUP if choice["fulfilment"] == PICKUP else COD)
     choice["note"], errors["note"] = forms.text(form, "note", NOTE_MAX)
     if choice["fulfilment"] == DELIVERY:
         raw = form.get("address_id", "new")

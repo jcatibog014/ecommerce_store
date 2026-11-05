@@ -56,6 +56,11 @@ PAGES = [
     ("price-order.png", "cashier", "{bulk-order}", "light", DESKTOP),
     ("price-order-dark.png", "cashier", "{bulk-order}", "dark", DESKTOP),
     ("delivery-areas.png", "owner", "/manage/delivery-areas", "light", DESKTOP),
+    ("order-pay.png", "shopper", "{my-order:Waiting for payment}", "light", DESKTOP),
+    ("order-paid.png", "shopper", "{my-order:Paid}", "light", DESKTOP),
+    ("staff-paid-order.png", "cashier", "{staff-order:confirmed:Paid}", "light", DESKTOP),
+    ("staff-refunded-order.png", "cashier", "{staff-order:cancelled:Refunded}", "light", DESKTOP),
+    ("orders-waiting.png", "cashier", "/manage/orders?tab=waiting", "light", DESKTOP),
 ]
 
 
@@ -92,6 +97,10 @@ def address(page, path):
         page.goto(f"{BASE}/orders")
         row = page.locator("tr", has_text=path[len("{my-order:"):-1])
         return row.locator(".row-link").first.get_attribute("href")
+    if path.startswith("{staff-order:"):
+        tab, words = path[len("{staff-order:"):-1].split(":")
+        page.goto(f"{BASE}/manage/orders?tab={tab}")
+        return page.locator("tr", has=page.locator(".pill", has_text=words)).locator(".row-link").first.get_attribute("href")
     if path == "{bulk-order}":
         page.goto(f"{BASE}/manage/orders")
         row = page.locator("tr", has_text="Marites Santos").filter(has_text="Has bulk items")
@@ -104,6 +113,16 @@ def address(page, path):
             link = link.replace("/products/", "/manage/products/")
         return link + (f"#{anchor}" if anchor else "")
     return path
+
+
+def shoot_sandbox(page):
+    """The practice payment page: press Pay on the order that waits for payment, then go back."""
+    view_as(page, "shopper")
+    page.goto(f"{BASE}{address(page, '{my-order:Waiting for payment}')}")
+    page.get_by_role("button", name="Pay ₱").click()
+    page.wait_for_url("**/sandbox/pay/**")
+    save(page, "sandbox.png")
+    page.get_by_role("button", name="Go back without paying").click()
 
 
 def shoot_visitor_pages(browser):
@@ -128,6 +147,7 @@ def main():
             view_as(page, role)
             page.goto(f"{BASE}{address(page, path)}")
             save(page, name)
+        shoot_sandbox(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

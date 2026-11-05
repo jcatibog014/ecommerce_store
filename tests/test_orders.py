@@ -405,10 +405,13 @@ def test_the_steps_show_how_far_an_order_got():
     class Fake:
         fulfilment = "delivery"
         status = "confirmed"
+        payment_method = "cod"
     assert orders.steps(Fake()) == [("Placed", "done"), ("Priced", "now"), ("Packing", "next"),
                                     ("Ready to go", "next"), ("On the way", "next"), ("Delivered", "next")]
     Fake.status = "cancelled"
     assert [state for _, state in orders.steps(Fake())] == ["done"] + ["next"] * 5
+    Fake.payment_method, Fake.status = "online", "paid"  # online orders have a Paid step
+    assert [label for label, state in orders.steps(Fake()) if state == "now"] == ["Paid"]
 
 
 # ---------- Privacy ----------

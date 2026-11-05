@@ -2,7 +2,7 @@
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy.exc import IntegrityError
 
-from .. import checkout, db, forms
+from .. import checkout, db, forms, gateways
 from ..checkout import CheckoutProblem
 from ..dates import utcnow
 from ..models import CartItem, ProductUnit
@@ -94,7 +94,8 @@ def checkout_page():
     errors, form = {}, {}
     if request.method == "POST":
         form = request.form
-        choice, errors = checkout.read_checkout(request.form, g.user, areas, addresses)
+        choice, errors = checkout.read_checkout(request.form, g.user, areas, addresses,
+                                                online_ok=gateways.for_store(g.store) is not None)
         key = request.form.get("idempotency_key", "")
         if not errors:
             try:
@@ -117,7 +118,8 @@ def checkout_page():
     key = session.get("checkout_key") or checkout.new_checkout_key()
     session["checkout_key"] = key
     return render_template("shop/checkout.html", items=items, summary=summary, areas=areas, addresses=addresses,
-                           errors=errors, form=form, key=key), 400 if errors else 200
+                           errors=errors, form=form, key=key, online=gateways.for_store(g.store) is not None,
+                           online_minimum=gateways.ONLINE_MINIMUM), 400 if errors else 200
 
 
 def init_app(app):

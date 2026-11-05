@@ -72,6 +72,34 @@
         <p class="card-note">{{ PAYMENT_METHODS[order.payment_method] }}</p>
         {% if order.note %}<p class="shopper-note"><strong>Note:</strong> {{ order.note }}</p>{% endif %}
       </section>
+      {% if order.payments %}
+        <section class="card">
+          <h2>Payments</h2>
+          <ul class="plain-list payment-list">
+            {% for payment in order.payments|reverse %}
+              <li>
+                <span><strong>{{ payment.amount|peso }}</strong> {{ 'online' if payment.gateway != 'cash' else 'cash' }}{% if payment.paid_with %} ({{ PAID_WITH_LABELS.get(payment.paid_with, payment.paid_with) }}){% endif %}
+                  <span class="row-sub">{{ payment.created_at|nice_datetime }}{% if payment.gateway == 'sandbox' %} · practice payment{% endif %}{% if payment.gateway_payment_id %} · {{ payment.gateway_payment_id }}{% endif %}</span></span>
+                <span class="pill payment-{{ payment.status }}">{{ PAYMENT_STATUS_LABELS[payment.status] }}</span>
+              </li>
+              {% if payment.needs_refund %}<li class="warn-text">This payment came in after the order changed. Give it back below.</li>{% endif %}
+              {% for refund in payment.refunds %}
+                <li class="row-sub">Refund of {{ refund.amount|peso }}: {{ refund.status }}{% if refund.error %} ({{ refund.error }}){% endif %}</li>
+              {% endfor %}
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+      {% if refundable(order) and can(PRICE_ORDERS) %}
+        <form method="post" action="{{ url_for('payments.refund', ref=order.ref) }}" class="card stack"
+              data-confirm="Send {{ refundable(order).amount|peso }} back to {{ order.customer_name }}?{% if order.status == 'paid' %} The order is cancelled and its items go back on sale.{% endif %}">
+          {{ csrf() }}
+          <h2>{{ 'Cancel and Refund' if order.status == 'paid' else 'Give the Money Back' }}</h2>
+          <p class="card-note">{{ refundable(order).amount|peso }} goes back to how the shopper paid.</p>
+          {{ field('reason', 'Reason', hint='The shopper sees it', attrs='maxlength="300" required placeholder="Sorry, we ran out of this item."') }}
+          <div class="form-actions"><button class="button button-danger" type="submit">{{ 'Cancel and refund' if order.status == 'paid' else 'Refund' }}</button></div>
+        </form>
+      {% endif %}
       <section class="card">
         <h2>Timeline</h2>
         {{ timeline(order) }}

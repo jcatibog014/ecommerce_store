@@ -1,0 +1,44 @@
+# AGENTS.md
+
+This file guides AI coding agents (Claude Code, Codex, Cursor, Copilot and others) working in this repository.
+
+## Overview
+
+**DFJC Store**, the online shop and counter for a real wholesale and retail store (a big sari-sari store), in Python (Flask). The repo is `ecommerce_store` and the Python package is `dfjc`. Shoppers browse the catalog, and (from stage 2) order for pickup or delivery; the cashier decides the wholesale or retail price; staff work the counter. The plan, with the stages and their progress, is `docs/PLAN.md`. **One PR per stage**: stop for the owner's review after each.
+
+It is a learning project for **transactions, payment integration and order state**, so those parts stay easy to read: short comments that explain *why*, plain functions that the tests call directly, and no extra libraries unless the owner asks for them. Write the README in simple (A1-level) English.
+
+Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the virtual environment:
+
+- Install: `.venv\Scripts\python -m pip install -r requirements.txt` (create `.venv` with `python -m venv .venv` first if it's missing).
+- First time: `.venv\Scripts\flask --app dfjc upgrade-db` (makes the tables), then `.venv\Scripts\flask --app dfjc create-owner` (makes the store and the owner's login).
+- Run: `.venv\Scripts\flask --app dfjc run --debug --port 5009`, then open http://127.0.0.1:5009. (Ports: Swap Meter 5000, Ambon Alert 5001, Ang Gastos! 5002, Sangkap 5003, Gawi 5004, Akda 5005, Hire Wire 5006, Plan-It 5007, ShiroMoto 5008.)
+- Test: `.venv\Scripts\python -m pytest`. Every test gets a fresh SQLite file and **never goes online**: an autouse fixture in `tests/conftest.py` makes any network connection fail. Set `TEST_DATABASE_URL` to an **empty** Neon branch to run the same tests on PostgreSQL (each test drops and remakes the tables). SQLAlchemy warnings fail the tests (`pytest.ini`).
+- Other commands: `set-password <email>`.
+- Screenshots: `docs/take_screenshots.py` (Playwright + Edge, from Try Demo; its top comment has the steps). Playwright isn't in this `.venv`; the owner borrows `expense_tracker`'s.
+
+## Architecture
+
+- **Stores.** Everything belongs to a store (`stores` table). The real store is DFJC (`stores.main_store()`, made by `create-owner`). Every Try Demo makes its own demo store (`seed.make_demo`), deleted with everything in it after 2 hours. `auth.load_user()` sets `g.store` (your own store, else DFJC) and `g.role`. Every query starts from `g.store`; `stores.get_in_store()` gives 404 for another store's row. Add a test when you add a route.
+- **Roles** (`permissions.py`): Owner, Cashier, Rider, Shopper. Views say what they need with `@needs(MANAGE_PRODUCTS)` and friends; templates ask `can(...)`. Never compare role names in a view. In the demo one person plays every role through **View As** (`session["view_as"]`, only in a demo store).
+- **Accounts** (`auth.py`): shoppers sign up with name, email and a PH mobile number (`clean_mobile` makes `09171234567`) and log in by email. Staff join with a one-time invite link from the owner (`invites.py`, only a hash is kept, 7 days). Password reset is an emailed link (`itsdangerous`, 1 hour) that holds `session_version`, so it works once. `mailer.py` sends through Gmail with `MAIL_USERNAME` + `MAIL_PASSWORD`; without them (and always in tests) emails go to `mailer.outbox()` and the terminal.
+- **Catalog** (`catalog.py`): stock is counted in **pieces**; each product has units (`product_units`: Piece, Pack of 6, Case of 24) with `pieces_per_unit`, a **retail** and a **wholesale** price. Shoppers only ever see retail; the cashier gives wholesale (stage 2). Shoppers see a product only if it is on and has a unit on (`shop_filter`). Search needs every word (`icontains(..., autoescape=True)`). Money is whole **centavos** (`money.py`: `parse_peso`, `peso`); never use floats for money.
+- **Editing safely:** `products.version` is SQLAlchemy's `version_id_col`. The form sends the version it showed; an old one is refused, and a save that races another raises `StaleDataError` (both say "Someone else saved this product"). Stock changes for orders must use plain `UPDATE ... WHERE` statements so they don't bump the version. The database also refuses negative stock or more reserved than in stock (CHECK constraints).
+- **Photos** (`photos.py`) are checked with Pillow and kept in the database as two WebP copies (1000 px and 400 px), because Render forgets files. They are served from `/photos/<id>.webp` with a year-long cache (a new upload is a new id). The demo can't upload.
+- **Times:** moments are naive UTC (`dates.utcnow()`), shown on the store's clock (Asia/Manila) by the `formatting.py` filters.
+- **Demo:** **every page the demo can open must show an example**; `tests/test_demo.py` fails if one goes empty. Give every new feature sample data in `seed.py` in the same PR. All names are made up and no product is a real brand.
+- **Migrations:** after changing `models.py`, run `upgrade-db`, then `.venv\Scripts\alembic revision --autogenerate --rev-id 00NN -m "what changed"` and check the file. A new NOT NULL column on an existing table needs a `server_default`. `db.upgrade_db()` turns SQLite foreign keys off while migrating so a table rebuild can't cascade-delete other tables. `tests/test_migrations.py` checks models and migrations agree.
+- The page's CSP allows no inline styles or scripts. Template helpers that macros use (`photo_url`, `cheapest`, `stock_word`, `can`) are Jinja **globals**, because imported macros don't see context processors.
+
+## UI rules (the owner's)
+
+- **Neat first:** no decorative emoji; controls the same height (`--control-height`) with bottoms aligned; the main button of a form last on the right; row buttons (Save on each unit or category) are quiet outlined ones, so one yellow button per form stands out. Sizes in `rem`; the root font steps up at 1600 / 1920 / 2300px; pages fill wide screens. Layouts use container queries on `.page` (`container: main`).
+- **Title Case** for the menu, page titles, section headings and empty-state titles ("All Products", "Ways to Buy"). **Sentence case** for buttons, labels, hints and messages ("Add product", "Show to shoppers").
+- **Preferences and account actions live in Settings** (theme, your details, password, log out). The header and sidebar only move between pages; Log out is also in the account menu.
+- **Look: "Bright tindahan + bamboo".** Store-sign yellow buttons with dark text (`--accent`, `--on-accent`), red prices (`--red`), dried bamboo / wood (`--bamboo`, `--bamboo-deep`) for the header strip, the category shelf, the sidebar edge and the footer, and a dark wood login panel (`--panel`) with a faint woven texture (`.woven`, only there and on empty states). Headings, prices and the name use Nunito 700/800 (`static/fonts/`, see its README); body text is Segoe UI. Links are a warm brown (`--link`), never yellow (yellow text is unreadable on white). The logo (`mark()` in `_macros.html`) is a yellow tile with a red awning.
+- Shoppers and visitors get the store header (`_shop_header.html`); staff get the sidebar (`_sidebar.html`). The demo bar with View As sits above both.
+- **Dark mode is defined twice** in `style.css` (device setting + Settings choice): change both blocks together. `tests/test_look.py` checks they match and that every text colour has enough contrast in both themes; add a pair there when you add a colour.
+- Messages (`flash()`) float as toasts: good news fades after 5 seconds; pass `"error"` for a problem, and it stays until closed. Write messages that say what changed.
+- Stock and role pills always show their words (never colour alone).
+- **Every PR must keep the README's pictures up to date (the owner's standing rule).** Screenshots live in `docs/screenshots/` and every one is shown in the README. If a PR visibly changes a page, retake its pictures; if it adds a page or feature, add a picture to `docs/take_screenshots.py` and the README. `tests/test_readme.py` fails if they disagree. In a PR description, link pictures with a full `raw.githubusercontent.com` address.
+- Commit messages and PR bodies go through files (`git commit -F`, `gh pr create --body-file`): PowerShell 5.1 breaks quotes in arguments.

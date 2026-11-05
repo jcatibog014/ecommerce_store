@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_picture, stock_pill %}
+{% block title %}{{ product.name }} - {{ g.store.name }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('shop.products', category=product.category_id) if product.category else url_for('shop.products') }}">&larr; {{ product.category.name if product.category else 'All Products' }}</a>
+  <div class="product-page">
+    <div class="product-page-picture">{{ product_picture(product, small=False) }}</div>
+    <div class="product-page-info">
+      {% if product.category %}<p class="kicker">{{ product.category.name }}</p>{% endif %}
+      <h1>{{ product.name }}</h1>
+      <p>{{ stock_pill(product) }}</p>
+      {% if product.description %}<p class="product-description">{{ product.description }}</p>{% endif %}
+
+      <h2>Ways to Buy</h2>
+      <table class="units-table">
+        <thead><tr><th scope="col">Size</th><th scope="col" class="num">Price</th><th scope="col" class="num">Each piece</th><th scope="col"><span class="visually-hidden">Stock</span></th></tr></thead>
+        <tbody>
+          {% for unit in product.active_units %}
+            <tr>
+              <th scope="row">{{ unit.name }}{% if unit.pieces_per_unit > 1 %} <span class="muted">({{ unit.pieces_per_unit|pieces }})</span>{% endif %}</th>
+              <td class="num"><span class="price">{{ unit.retail_price|peso }}</span></td>
+              <td class="num muted">{{ unit|per_piece }}</td>
+              <td>{% if not unit.can_buy %}<span class="stock stock-out">Not enough left</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="wholesale-note">These are retail prices. Buying in bulk for your store? The cashier checks every order before you pay and gives the wholesale price where it applies.</p>
+      <p class="muted small">Ordering online opens soon. For now, visit the store{% if g.store.phone %} or call {{ g.store.phone }}{% endif %}.</p>
+    </div>
+  </div>
+{% endblock %}

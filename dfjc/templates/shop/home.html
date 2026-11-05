@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_icons.html" import category_icon %}
+{% from "shop/_card.html" import product_card %}
+{% block content %}
+  <section class="store-sign">
+    <div class="store-sign-text">
+      <h1>{{ g.store.name }}</h1>
+      {% if g.store.tagline %}<p class="store-sign-tagline">{{ g.store.tagline }}</p>{% endif %}
+      <ul class="store-facts">
+        {% if g.store.hours %}<li><span class="fact-label">Open</span> {{ g.store.hours }}</li>{% endif %}
+        {% if g.store.address %}<li><span class="fact-label">Find us</span> {{ g.store.address }}</li>{% endif %}
+        <li><span class="fact-label">Get it</span> Pick up at the store, or we deliver</li>
+      </ul>
+      <div class="actions">
+        <a class="button" href="{{ url_for('shop.products') }}">Shop all products</a>
+        {% if not g.user %}<a class="button button-quiet" href="{{ url_for('auth.signup') }}">Sign up to order</a>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if categories %}
+    <section class="home-section">
+      <h2>Shop by Category</h2>
+      <ul class="shelf">
+        {% for category in categories %}
+          <li>
+            <a class="shelf-item" href="{{ url_for('shop.products', category=category.id) }}">
+              <span class="shelf-icon tile-{{ category.id % 6 }}">{{ category_icon(category.icon) }}</span>
+              <span class="shelf-name">{{ category.name }}</span>
+              <span class="shelf-count">{{ counts[category.id] }} {{ 'item' if counts[category.id] == 1 else 'items' }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if newest %}
+    <section class="home-section">
+      <div class="section-head">
+        <h2>New in the Store</h2>
+        <a href="{{ url_for('shop.products', sort='new') }}">See all new items</a>
+      </div>
+      <div class="product-grid">
+        {% for product in newest %}{{ product_card(product) }}{% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <div class="empty-state woven">
+      <h2>No Products Yet</h2>
+      <p>The shelves are being filled. Please come back soon.</p>
+    </div>
+  {% endif %}
+
+  <section class="wholesale-card">
+    <div>
+      <h2>Buying for Your Own Store?</h2>
+      <p>Order by the box, the case or the sack. Before you pay, our cashier checks your order and gives the wholesale price where it applies.</p>
+    </div>
+    <a class="button button-quiet" href="{{ url_for('shop.products', sort='name') }}">Browse the catalog</a>
+  </section>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% block title %}Settings - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
+  {% set locked = 'disabled' if g.user.is_demo else '' %}
+  <div class="settings">
+    <div class="page-head"><h1>Settings</h1></div>
+
+    {# The theme lives in the browser, so this needs JavaScript. app.js shows it. #}
+    <section class="setting" data-theme-settings hidden>
+      <div class="setting-text">
+        <h2>Appearance</h2>
+        <p>Device follows your phone or computer. This choice is saved on this device only.</p>
+      </div>
+      <fieldset class="theme-choice">
+        <legend class="visually-hidden">Theme</legend>
+        <label><input type="radio" name="theme" value="system"><span>Device</span></label>
+        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+      </fieldset>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Your Details</h2>
+        <p>The store calls this number about your orders. Your email is {{ g.user.email }}.</p>
+      </div>
+      <form method="post" data-watch-changes>
+        {{ csrf() }}
+        <input type="hidden" name="action" value="details">
+        <fieldset class="stack plain-fieldset" {{ locked }}>
+          {{ field('name', 'Name', g.user.name, errors.name, attrs='autocomplete="name" required maxlength="80"') }}
+          {{ field('mobile', 'Mobile number', g.user.mobile, errors.mobile, type='tel', attrs='autocomplete="tel" required') }}
+          <div class="form-actions"><button class="button" type="submit">Save details</button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Password</h2>
+        <p>After a change, every other phone or computer is logged out.</p>
+      </div>
+      <form method="post">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="password">
+        <fieldset class="stack plain-fieldset" {{ locked }}>
+          {{ field('current_password', 'Current password', error=errors.current_password, type='password', attrs='autocomplete="current-password" required') }}
+          {{ field('new_password', 'New password', error=errors.new_password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required minlength="8"') }}
+          {{ field('confirm_password', 'New password again', type='password', attrs='autocomplete="new-password" required') }}
+          <div class="form-actions"><button class="button" type="submit">Change password</button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Log Out</h2>
+        <p>Logged in as {{ g.user.name }}{% if g.role != 'shopper' %} ({{ ROLE_LABELS[g.role]|lower }}){% endif %}.</p>
+      </div>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="form-actions setting-account-actions">
+        {{ csrf() }}
+        <button class="button button-quiet" type="submit">Log out</button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

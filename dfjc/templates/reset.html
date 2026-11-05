@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% block title %}New Password - {{ APP_NAME }}{% endblock %}
+{% block body_class %}welcome-layout{% endblock %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+  <div class="welcome">
+    {% include "_welcome.html" %}
+    <section class="welcome-cards">
+      <div class="card">
+        <h1>Set a New Password</h1>
+        <p class="card-note">For {{ user.email }}. After this, every other device is logged out.</p>
+        <form method="post" class="stack">
+          {{ csrf() }}
+          {{ field('password', 'New password', error=errors.password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required minlength="8" autofocus') }}
+          {{ field('confirm_password', 'New password again', type='password', attrs='autocomplete="new-password" required') }}
+          <button class="button" type="submit">Save my new password</button>
+        </form>
+      </div>
+    </section>
+  </div>
+{% endblock %}

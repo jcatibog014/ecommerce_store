@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, money_field, product_picture, stock_pill %}
+{% from "manage/_product_fields.html" import product_fields %}
+{% block title %}{{ product.name }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {# A cashier sees everything, switched off: only the owner changes products and prices. #}
+  {% set locked = '' if can(MANAGE_PRODUCTS) else 'disabled' %}
+  <a class="back-link" href="{{ url_for('manage.products') }}">&larr; Products</a>
+  <div class="page-head">
+    <h1>{{ product.name }}</h1>
+    <div class="actions">
+      {% if product.is_active and product.active_units %}
+        <a class="button button-quiet" href="{{ url_for('shop.product', product_id=product.id) }}">See it in the store</a>
+      {% else %}
+        <span class="pill pill-off">Not shown to shoppers</span>
+      {% endif %}
+    </div>
+    <p class="page-sub">{{ product.available_pieces|pieces }} left{% if product.reserved_pieces %} ({{ product.reserved_pieces|pieces }} held for orders){% endif %}. {{ stock_pill(product) }}</p>
+  </div>
+  {% if locked %}<p class="note">Only the owner can change products and prices. You can see the wholesale prices here.</p>{% endif %}
+
+  <div class="product-admin">
+    <form method="post" class="card" data-watch-changes>
+      {{ csrf() }}
+      <input type="hidden" name="version" value="{{ product.version }}">
+      <fieldset class="stack plain-fieldset" {{ locked }}>
+        <h2>Details</h2>
+        {{ product_fields(values, errors, categories) }}
+        <div class="form-actions"><button class="button" type="submit">Save details</button></div>
+      </fieldset>
+    </form>
+
+    <section class="card" id="photo">
+      <h2>Photo</h2>
+      <div class="photo-box">{{ product_picture(product, small=False) }}</div>
+      <fieldset class="plain-fieldset" {{ locked }}>
+        <form method="post" action="{{ url_for('manage.upload_photo', product_id=product.id) }}" enctype="multipart/form-data" class="stack">
+          {{ csrf() }}
+          <label class="field">
+            <span class="field-label">{{ 'New photo' if product.photo_id else 'Add a photo' }} <span class="hint">JPG, PNG or WebP, up to 6 MB</span></span>
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required{% if g.user.is_demo %} disabled{% endif %}>
+          </label>
+          {% if g.user.is_demo %}<p class="card-note">The demo can't upload photos. Products without one show their category's picture.</p>{% endif %}
+          <div class="form-actions">
+            {% if product.photo_id %}
+              <button class="button button-danger" type="submit" formaction="{{ url_for('manage.delete_photo', product_id=product.id) }}" formnovalidate>Remove photo</button>
+            {% endif %}
+            <button class="button" type="submit"{% if g.user.is_demo %} disabled{% endif %}>Upload photo</button>
+          </div>
+        </form>
+      </fieldset>
+    </section>
+  </div>
+
+  <section class="card" id="units">
+    <div class="card-head">
+      <h2>Units and Prices</h2>
+      <p class="card-note">Shoppers see the retail price. The cashier can give the wholesale price when checking an order.</p>
+    </div>
+    <fieldset class="plain-fieldset" {{ locked }}>
+      <div class="unit-rows">
+        <div class="unit-row unit-row-head" aria-hidden="true">
+          <span>Unit</span><span>Pieces</span><span>Retail</span><span>Wholesale</span><span>Barcode</span><span>Sold</span><span></span>
+        </div>
+        {% for unit in product.units %}
+          {% set p = 'u' ~ unit.id ~ '_' %}
+          <form method="post" action="{{ url_for('manage.save_unit', product_id=product.id, unit_id=unit.id) }}" class="unit-row">
+            {{ csrf() }}
+            <input type="hidden" name="{{ p }}is_active_sent" value="1">
+            {{ field(p ~ 'name', 'Unit', unit.name, attrs='required maxlength="40"') }}
+            {{ field(p ~ 'pieces_per_unit', 'Pieces', unit.pieces_per_unit, attrs='inputmode="numeric" required') }}
+            {{ money_field(p ~ 'retail_price', 'Retail', unit.retail_price, attrs='required') }}
+            {{ money_field(p ~ 'wholesale_price', 'Wholesale', unit.wholesale_price) }}
+            {{ field(p ~ 'barcode', 'Barcode', unit.barcode, attrs='maxlength="40"') }}
+            <label class="check unit-sold"><input type="checkbox" name="{{ p }}is_active" value="1"{% if unit.is_active %} checked{% endif %}><span>Sold</span></label>
+            <div class="unit-actions">
+              <button class="button button-small button-quiet" type="submit">Save</button>
+              <button class="button button-small button-danger" type="submit" formaction="{{ url_for('manage.delete_unit', product_id=product.id, unit_id=unit.id) }}" formnovalidate
+                      data-confirm-button="Remove {{ unit.name }} from {{ product.name }}?">Remove</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="warn-text">No units yet, so shoppers can't see this product. Add one below.</p>
+        {% endfor %}
+        <form method="post" action="{{ url_for('manage.add_unit', product_id=product.id) }}" class="unit-row unit-row-new">
+          {{ csrf() }}
+          {{ field('new_name', 'New unit', attrs='required maxlength="40" placeholder="Case of 24"') }}
+          {{ field('new_pieces_per_unit', 'Pieces', attrs='inputmode="numeric" required placeholder="24"') }}
+          {{ money_field('new_retail_price', 'Retail', attrs='required') }}
+          {{ money_field('new_wholesale_price', 'Wholesale', attrs='placeholder="Optional"') }}
+          {{ field('new_barcode', 'Barcode', attrs='maxlength="40"') }}
+          <span></span>
+          <div class="unit-actions"><button class="button button-small" type="submit">Add unit</button></div>
+        </form>
+      </div>
+    </fieldset>
+  </section>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% from "_macros.html" import product_picture, stock_pill %}
+{# One product in a grid: picture, name, the cheapest way to buy it, and its stock. #}
+{% macro product_card(product) %}
+  {% set unit = cheapest(product) %}
+  {% set others = product.active_units|length - 1 %}
+  <article class="product-card">
+    <div class="product-card-picture">{{ product_picture(product) }}</div>
+    <div class="product-card-body">
+      <h3><a class="card-link" href="{{ url_for('shop.product', product_id=product.id) }}">{{ product.name }}</a></h3>
+      <p class="product-price"><span class="price">{{ unit.retail_price|peso }}</span> <span class="per">/ {{ unit.name|lower }}</span></p>
+      <p class="product-card-foot">
+        {% if others > 0 %}<span class="muted">+{{ others }} bigger {{ 'size' if others == 1 else 'sizes' }}</span>{% endif %}
+        {{ stock_pill(product) }}
+      </p>
+    </div>
+  </article>
+{% endmacro %}

@@ -1,0 +1,7 @@
+{% from "_macros.html" import wordmark %}
+{# The panel beside the login and sign-up cards: dark wood with a woven-bamboo texture. #}
+<section class="welcome-panel">
+  {{ wordmark(url_for('shop.home')) }}
+  <p class="welcome-line">Sari-sari needs by the piece, the pack or the case.</p>
+  {% if g.store and g.store.hours %}<p class="welcome-note">{{ g.store.hours }}</p>{% endif %}
+</section>

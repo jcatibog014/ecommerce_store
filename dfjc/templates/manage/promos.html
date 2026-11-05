@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, money_field, select, textarea, empty %}
+{% block title %}Promos - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Promos</h1>
+    <p class="page-sub">Voucher codes shoppers type at checkout. Each account can use a code once.</p>
+  </div>
+  {% if vouchers %}
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th scope="col">Code</th><th scope="col">What it gives</th><th scope="col">When</th><th scope="col" class="num">Used</th><th scope="col" class="num">Given away</th><th scope="col">Works now</th></tr></thead>
+        <tbody>
+          {% for voucher in vouchers %}
+            {% set over = voucher.ends_on and voucher.ends_on < today %}
+            <tr>
+              <th scope="row"><span class="promo-code">{{ voucher.code }}</span>{% if voucher.show_on_home %}<span class="row-sub">On the home page</span>{% endif %}</th>
+              <td>{{ describe(voucher) }}{% if voucher.description %}<span class="row-sub">{{ voucher.description }}</span>{% endif %}</td>
+              <td>{% if voucher.starts_on or voucher.ends_on %}{{ voucher.starts_on|nice_day if voucher.starts_on else 'Now' }} to {{ voucher.ends_on|nice_day if voucher.ends_on else 'no end' }}{% else %}Always{% endif %}</td>
+              <td class="num">{{ voucher.used_count }}{% if voucher.max_uses %} of {{ voucher.max_uses }}{% endif %}</td>
+              <td class="num">{{ (discounts.get(voucher.id) or 0)|peso }}</td>
+              <td>
+                <form method="post" action="{{ url_for('extras.voucher_active', voucher_id=voucher.id) }}" class="inline-form">
+                  {{ csrf() }}
+                  <input type="hidden" name="active" value="{{ '0' if voucher.is_active else '1' }}">
+                  {% if not voucher.is_active %}<span class="pill pill-off">Off</span>{% elif over %}<span class="pill pill-off">Ended</span>{% elif voucher.starts_on and voucher.starts_on > today %}<span class="pill payment-pending">Not yet</span>{% elif voucher.uses_left == 0 %}<span class="pill pill-off">Used up</span>{% else %}<span class="pill pill-on">Yes</span>{% endif %}
+                  <button class="button button-small button-quiet" type="submit">{{ 'Switch off' if voucher.is_active else 'Switch on' }}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty('No Promos Yet', 'Make a code below, like SUKI50 for 50 pesos off.') }}
+  {% endif %}
+
+  <form method="post" class="card stack narrow-form">
+    {{ csrf() }}
+    <h2>Make a Voucher</h2>
+    <div class="form-grid">
+      {{ field('code', 'Code', values.code, errors.code, hint='Letters and numbers', attrs='maxlength="30" required placeholder="SUKI50"') }}
+      {{ select('kind', 'It gives', kinds.items()|list, values.kind) }}
+      {{ field('value', 'How much', values.value if values.kind == 'percent' else (values.value / 100 if values.value else ''), errors.value, hint='Pesos, or percent. Empty for free delivery', attrs='inputmode="decimal"') }}
+      {{ money_field('min_spend', 'For orders of at least', values.min_spend, errors.min_spend, hint='Optional') }}
+      {{ field('max_uses', 'How many times in all', values.max_uses, errors.max_uses, hint='Empty = no limit', attrs='inputmode="numeric"') }}
+      {{ field('description', 'One line for shoppers', values.description, errors.description, hint='Optional', attrs='maxlength="160" placeholder="For our loyal customers"') }}
+      {{ field('starts_on', 'Starts', values.starts_on, errors.starts_on, type='date', hint='Optional') }}
+      {{ field('ends_on', 'Ends', values.ends_on, errors.ends_on, type='date', hint='Optional') }}
+    </div>
+    <label class="check"><input type="checkbox" name="show_on_home" value="1"{% if values.show_on_home %} checked{% endif %}> Show it on the home page</label>
+    <div class="form-actions"><button class="button" type="submit">Make voucher</button></div>
+  </form>
+{% endblock %}

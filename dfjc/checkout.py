@@ -24,7 +24,7 @@ from collections import defaultdict
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import selectinload
 
-from . import forms
+from . import forms, notices, vouchers
 from .models import (
     CASH_PICKUP, COD, DELIVERY, ONLINE, PICKUP, PLACED, RETAIL, Address, CartItem, DeliveryArea, Order, OrderEvent, OrderLine,
     Product, ProductUnit,
@@ -196,6 +196,7 @@ def place_order(s, user, store, choice, key, moment):
         payment_method=choice["payment_method"], price_type=RETAIL, customer_name=user.name,
         customer_mobile=user.mobile, area_name=area.name if area else "", address=choice.get("address", ""),
         note=choice.get("note", ""), delivery_fee=area.fee if area and choice["fulfilment"] == DELIVERY else 0,
+        discount=0,
         idempotency_key=key, placed_at=moment, updated_at=moment)
     for item in items:
         unit = item.unit
@@ -205,14 +206,21 @@ def place_order(s, user, store, choice, key, moment):
             pieces_per_unit=unit.pieces_per_unit, quantity=item.quantity, pieces=item.pieces,
             retail_price=unit.retail_price, wholesale_price=unit.wholesale_price, price_type=RETAIL))
     order.subtotal = sum(line.line_total for line in order.lines)
-    order.total = order.subtotal + order.delivery_fee
+    voucher = choice.get("voucher")
+    if voucher is not None:
+        order.voucher_code, order.voucher_kind, order.voucher_value = voucher.code, voucher.kind, voucher.value
+        order.discount = vouchers.order_discount(order, order.subtotal)
+    order.total = max(0, order.subtotal + order.delivery_fee - order.discount)
     s.add(order)
     if choice.get("new_address") is not None:
         s.add(choice["new_address"])
     s.flush()  # a second request with the same key fails here (UNIQUE), before anything is kept
+    if voucher is not None:
+        vouchers.use(s, voucher, user, order, moment)  # raises VoucherProblem if it was just used up
     s.add(OrderEvent(order_id=order.id, from_status=None, to_status=PLACED, by_id=user.id, created_at=moment,
                      note=choice.get("note", "")))
     s.execute(delete(CartItem).where(CartItem.user_id == user.id))
+    notices.queue(s, order, PLACED, None, moment)
     return order, True
 
 

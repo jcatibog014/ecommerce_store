@@ -47,7 +47,15 @@ def change_password(errors):
     return back()
 
 
-ACTIONS = {"details": change_details, "password": change_password}
+def change_emails(errors):
+    g.user.order_emails = request.form.get("order_emails") == "1"
+    db.session().commit()
+    flash("You'll get an email when your order changes." if g.user.order_emails
+          else "No more order emails. You can still see everything in My Orders.")
+    return back()
+
+
+ACTIONS = {"details": change_details, "password": change_password, "emails": change_emails}
 
 
 @bp.route("/", methods=["GET", "POST"])

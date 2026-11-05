@@ -18,6 +18,22 @@
     </div>
   </section>
 
+  {% if promos %}
+    <section class="home-section">
+      <h2>Promos</h2>
+      <ul class="promo-list">
+        {% for promo in promos %}
+          <li class="promo">
+            <span class="promo-code">{{ promo.code }}</span>
+            <span><strong>{{ describe_voucher(promo) }}</strong>
+              {% if promo.description %}<span class="row-sub">{{ promo.description }}</span>{% endif %}
+              <span class="row-sub">Type the code at checkout{% if promo.ends_on %}, until {{ promo.ends_on|nice_day }}{% endif %}.</span></span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   {% if categories %}
     <section class="home-section">
       <h2>Shop by Category</h2>

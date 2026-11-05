@@ -37,6 +37,30 @@
       </form>
     </section>
 
+    {% if g.role == 'shopper' %}
+      <section class="setting">
+        <div class="setting-text">
+          <h2>Order Emails</h2>
+          <p>An email when your order is priced, paid, ready or on the way. They go to {{ g.user.email }}.</p>
+        </div>
+        <form method="post" data-watch-changes>
+          {{ csrf() }}
+          <input type="hidden" name="action" value="emails">
+          <fieldset class="stack plain-fieldset" {{ locked }}>
+            <label class="check"><input type="checkbox" name="order_emails" value="1"{% if g.user.order_emails %} checked{% endif %}> Email me about my orders</label>
+            <div class="form-actions"><button class="button" type="submit">Save</button></div>
+          </fieldset>
+        </form>
+      </section>
+      <section class="setting">
+        <div class="setting-text">
+          <h2>Saved Addresses</h2>
+          <p>Where we deliver. You choose one when you check out.</p>
+        </div>
+        <div class="form-actions setting-account-actions"><a class="button button-quiet" href="{{ url_for('extras.addresses') }}">Manage addresses</a></div>
+      </section>
+    {% endif %}
+
     <section class="setting">
       <div class="setting-text">
         <h2>Password</h2>

@@ -28,6 +28,10 @@
             <span class="user-menu-name"><span class="visually-hidden">Account menu for </span>{{ g.user.first_name }}</span>
           </summary>
           <div class="user-menu-items">
+            {% if can(SHOP) %}
+              <a href="{{ url_for('extras.favorites') }}">Favorites</a>
+              <a href="{{ url_for('extras.addresses') }}">Addresses</a>
+            {% endif %}
             <a href="{{ url_for('settings.index') }}">Settings</a>
             <form method="post" action="{{ url_for('auth.logout') }}">
               {{ csrf() }}

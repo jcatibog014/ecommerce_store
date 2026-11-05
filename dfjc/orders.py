@@ -113,11 +113,16 @@ def move(s, order, to_status, by, moment, note="", **changes):
         set_committed_value(order, name, value)
     if to_status in (CANCELLED, REFUNDED) and from_status in HOLDS_STOCK:
         release_stock(s, order)
+    if to_status in (CANCELLED, REFUNDED):
+        from . import vouchers
+        vouchers.give_back(s, order)  # a cancelled order doesn't use up a voucher
     if to_status == PACKING and from_status in HOLDS_STOCK:
         from . import stock  # (stock.py uses this module too)
         stock.take_for_order(s, order, by, moment)
     s.add(OrderEvent(order_id=order.id, from_status=from_status, to_status=to_status,
                      by_id=by.id if by else None, note=note, created_at=moment))
+    from . import notices
+    notices.queue(s, order, to_status, from_status, moment, note)  # the email, in this same transaction
     return order
 
 
@@ -176,13 +181,16 @@ def price_order(s, order, choices, cashier, moment, version, note=""):
     for line in order.lines:
         line.price_type = WHOLESALE if choices.get(line.id) == WHOLESALE else RETAIL
     s.flush()
-    subtotal, total = totals(order)
+    from . import vouchers
+    subtotal = sum(line.line_total for line in order.lines)
+    discount = vouchers.order_discount(order, subtotal)  # a percent voucher follows the new items' price
+    total = max(0, subtotal + order.delivery_fee - discount)
     to_status = CONFIRMED if order.payment_method in CASH_METHODS else AWAITING_PAYMENT
     words = {RETAIL: "Retail prices", WHOLESALE: "Wholesale prices", MIXED: "Retail and wholesale prices"}
     kind = price_type_of(order.lines)
     return move(s, order, to_status, cashier, moment, note=words[kind] + (f". {note}" if note else ""),
-                subtotal=subtotal, total=total, price_type=kind, priced_at=moment, priced_by_id=cashier.id,
-                cashier_note=note)
+                subtotal=subtotal, discount=discount, total=total, price_type=kind, priced_at=moment,
+                priced_by_id=cashier.id, cashier_note=note)
 
 
 # ---------- The steps shown on the order page ----------

@@ -2,7 +2,8 @@
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy.exc import IntegrityError
 
-from .. import checkout, db, forms, gateways
+from .. import checkout, db, forms, gateways, vouchers
+from ..dates import local_today
 from ..checkout import CheckoutProblem
 from ..dates import utcnow
 from ..models import CartItem, ProductUnit
@@ -92,16 +93,29 @@ def checkout_page():
     areas = checkout.active_areas(s, g.store)
     addresses = checkout.saved_addresses(s, g.user)
     errors, form = {}, {}
+    voucher, voucher_note = None, None
     if request.method == "POST":
         form = request.form
         choice, errors = checkout.read_checkout(request.form, g.user, areas, addresses,
                                                 online_ok=gateways.for_store(g.store) is not None)
+        code = vouchers.clean_code(request.form.get("voucher"))
+        if code:
+            voucher = vouchers.find(s, g.store, code)
+            trouble = vouchers.problem(voucher, summary["subtotal"], local_today(), g.user, s)
+            if trouble:
+                errors["voucher"], voucher = trouble, None
+            else:
+                choice["voucher"] = voucher
+                voucher_note = vouchers.describe(voucher)
         key = request.form.get("idempotency_key", "")
-        if not errors:
+        if request.form.get("action") == "apply":
+            # Only checking the code: nothing is ordered yet, so only the code's message shows.
+            errors = {"voucher": errors["voucher"]} if "voucher" in errors else {}
+        elif not errors:
             try:
                 order, _ = checkout.place_order(s, g.user, g.store, choice, key, utcnow())
                 s.commit()
-            except CheckoutProblem as problem:
+            except (CheckoutProblem, vouchers.VoucherProblem) as problem:
                 s.rollback()
                 flash(str(problem), "error")
                 return redirect(url_for("cart.index"))
@@ -109,17 +123,20 @@ def checkout_page():
                 # The same "Place order" twice at the very same moment: the other one won.
                 s.rollback()
                 order = checkout.find_by_key(s, g.user, key)
-                if order is None:
-                    raise
+                if order is None:  # the voucher's one-per-account rule, at the same moment
+                    flash("You already used that code.", "error")
+                    return redirect(url_for("cart.checkout_page"))
             session.pop("checkout_key", None)
             flash(f"Thank you! Order {order.ref} is placed. The cashier will check it and give the final price.")
             return redirect(url_for("my_orders.detail", ref=order.ref))
     # One key per visit to this page: pressing "Place order" twice sends the same one.
     key = session.get("checkout_key") or checkout.new_checkout_key()
     session["checkout_key"] = key
+    discount = vouchers.discount(voucher.kind, voucher.value, summary["subtotal"], 0) if voucher else 0
     return render_template("shop/checkout.html", items=items, summary=summary, areas=areas, addresses=addresses,
                            errors=errors, form=form, key=key, online=gateways.for_store(g.store) is not None,
-                           online_minimum=gateways.ONLINE_MINIMUM), 400 if errors else 200
+                           online_minimum=gateways.ONLINE_MINIMUM, voucher=voucher, voucher_note=voucher_note,
+                           discount=discount), 400 if errors else 200
 
 
 def init_app(app):

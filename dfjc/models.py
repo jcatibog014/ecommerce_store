@@ -12,7 +12,10 @@
     payment_events (every webhook PayMongo sent us, each event id once)
     stores ─┬─< stock_moves (every change to a product's stock: why, how many, who)
             ├─< remittances (cash a rider hands to the cashier) ──< payments (cash on delivery)
-            └─< cash_shifts (a cashier's drawer) ──< walkin_sales (the counter) ──< walkin_lines
+            ├─< cash_shifts (a cashier's drawer) ──< walkin_sales (the counter) ──< walkin_lines
+            ├─< vouchers (promo codes) ──< voucher_uses (one per shopper)
+            └─< notifications (the email outbox)
+    users ──< favorites ──> products
 
     users ─┬─< cart_items ──> product_units
            ├─< addresses ──> delivery_areas
@@ -26,9 +29,9 @@ Stock is counted in PIECES. A unit says how many pieces it takes: selling one
 "Case of 24" takes 24 pieces. Money is whole centavos (money.py).
 Moments are naive UTC (dates.utcnow()).
 """
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, false, text, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import utcnow
@@ -138,6 +141,7 @@ class User(Base):
     # (after a password change), and it also makes old reset links stop working.
     session_version: Mapped[int] = mapped_column(default=1)
     reset_sent_at: Mapped[datetime | None]  # the last reset email, so nobody can flood an inbox
+    order_emails: Mapped[bool] = mapped_column(default=True, server_default=true())  # Settings
     is_active: Mapped[bool] = mapped_column(default=True)  # the owner can switch staff off
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
@@ -381,6 +385,13 @@ class Order(Base):
     delivery_fee: Mapped[int] = mapped_column(default=0)
     discount: Mapped[int] = mapped_column(default=0)
     total: Mapped[int] = mapped_column(default=0)
+    # A copy of the voucher when the order was placed, so the discount can be worked out again
+    # after the cashier's price (vouchers.py) even if the owner changes the voucher later.
+    voucher_id: Mapped[int | None] = mapped_column(ForeignKey("vouchers.id", ondelete="SET NULL"))
+    voucher_code: Mapped[str] = mapped_column(String(30), default="", server_default="")
+    voucher_kind: Mapped[str] = mapped_column(String(10), default="", server_default="")
+    voucher_value: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    voucher_free_delivery: Mapped[bool] = mapped_column(default=False, server_default=false())
     idempotency_key: Mapped[str] = mapped_column(String(64))
     # Goes up by 1 on every change (orders.move). A change made from an older copy is refused,
     # so two cashiers can't price the same order at once.
@@ -669,3 +680,85 @@ class WalkinLine(Base):
     line_total: Mapped[int]
 
     sale: Mapped[WalkinSale] = relationship(back_populates="lines")
+
+
+# ---------- Stage 6: favorites, promos and emails ----------
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    __table_args__ = (UniqueConstraint("user_id", "product_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    product: Mapped[Product] = relationship()
+
+
+VOUCHER_AMOUNT = "amount"    # value is centavos off
+VOUCHER_PERCENT = "percent"  # value is a percentage of the items
+VOUCHER_DELIVERY = "delivery"  # free delivery only
+VOUCHER_KINDS = {VOUCHER_AMOUNT: "Pesos off", VOUCHER_PERCENT: "Percent off", VOUCHER_DELIVERY: "Free delivery"}
+
+
+class Voucher(Base):
+    __tablename__ = "vouchers"
+    __table_args__ = (
+        UniqueConstraint("store_id", "code"),
+        CheckConstraint(f"kind IN ({sql_list(VOUCHER_KINDS)})", name="kind"),
+        # The database refuses more uses than allowed, even if two shoppers order at once.
+        CheckConstraint("max_uses IS NULL OR used_count <= max_uses", name="uses_within_limit"),
+        CheckConstraint("value >= 0 AND min_spend >= 0 AND used_count >= 0", name="numbers_not_negative"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(30))  # always UPPER CASE
+    kind: Mapped[str] = mapped_column(String(10))
+    value: Mapped[int] = mapped_column(default=0)
+    min_spend: Mapped[int] = mapped_column(default=0)  # centavos, on the items at retail price
+    max_uses: Mapped[int | None]  # empty = no limit
+    used_count: Mapped[int] = mapped_column(default=0)
+    starts_on: Mapped[date | None]
+    ends_on: Mapped[date | None]
+    description: Mapped[str] = mapped_column(String(160), default="")
+    show_on_home: Mapped[bool] = mapped_column(default=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    @property
+    def uses_left(self):
+        return None if self.max_uses is None else max(0, self.max_uses - self.used_count)
+
+
+class VoucherUse(Base):
+    """One shopper used one voucher on one order. UNIQUE: each account can use a code once."""
+    __tablename__ = "voucher_uses"
+    __table_args__ = (UniqueConstraint("voucher_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    voucher_id: Mapped[int] = mapped_column(ForeignKey("vouchers.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class Notification(Base):
+    """The email OUTBOX. A row is written in the same transaction as the change it tells about,
+    so an email is never sent for a change that was rolled back. notices.deliver() sends them later."""
+    __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_status", "status", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    to_email: Mapped[str] = mapped_column(String(254))
+    subject: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="pending")  # pending, sent, failed, skipped
+    tries: Mapped[int] = mapped_column(default=0)
+    error: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    sent_at: Mapped[datetime | None]

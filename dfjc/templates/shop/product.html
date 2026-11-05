@@ -10,7 +10,17 @@
     <div class="product-page-info">
       {% if product.category %}<p class="kicker">{{ product.category.name }}</p>{% endif %}
       <h1>{{ product.name }}</h1>
-      <p>{{ stock_pill(product) }}</p>
+      <div class="product-status">
+        {{ stock_pill(product) }}
+        {% if g.user and can(SHOP) %}
+          <form method="post" action="{{ url_for('extras.toggle_favorite', product_id=product.id) }}">
+            {{ csrf() }}
+            <button class="button button-small button-quiet favorite-button{% if saved %} is-saved{% endif %}" type="submit" aria-pressed="{{ 'true' if saved else 'false' }}">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="{{ 'currentColor' if saved else 'none' }}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path></svg>
+              {{ 'Saved to favorites' if saved else 'Save to favorites' }}</button>
+          </form>
+        {% endif %}
+      </div>
       {% if product.description %}<p class="product-description">{{ product.description }}</p>{% endif %}
 
       <h2>Ways to Buy</h2>

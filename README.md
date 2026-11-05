@@ -19,6 +19,10 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 - Pay in cash (at the counter, or to the rider), or **pay online** with GCash, Maya or a card after the cashier prices the order.
 - See every order in **My Orders**: what the store is doing now, and what happened when.
 - Cancel an order before the store starts packing it.
+- Type a **voucher code** at checkout (like SUKI50) for pesos off, percent off, or free delivery.
+- Save products to **Favorites**, and press **Buy again** on a past order.
+- Keep **saved addresses** for delivery.
+- Get an **email** when an order is priced, paid, ready or on the way (you can turn it off in Settings).
 - Make an account with your name, email and mobile number.
 - Forgot your password? The store emails you a link to make a new one.
 
@@ -46,6 +50,7 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 - Invite a cashier or a rider with a one-time link.
 - Change the store's name, address, phone and opening hours.
 - Choose the barangays for delivery, and the fee for each.
+- Make **Promos**: voucher codes with a minimum order, a number of uses, and start and end dates.
 - Add many products at once from a spreadsheet (**Import from a file**). You see what will change first, and either every row is saved or none.
 - Do everything the cashier does.
 
@@ -74,6 +79,13 @@ If two shoppers try to buy the last pieces at the same moment, only one gets the
 - A message with a wrong signature is refused. The same message sent twice changes nothing.
 - If money comes in for an order that was cancelled, it is not lost: the cashier sees "Give the money back".
 - The demo uses a **practice payment page** (the sandbox). No real money moves.
+
+## Vouchers and emails
+
+- A voucher with 50 uses is used at most 50 times, even if many shoppers order at the same moment. Each account can use a code once. A cancelled order gives the use back.
+- A percent voucher follows the cashier's price: if the cashier gives the wholesale price, the discount is worked out again.
+- Emails wait in an **outbox** that is saved together with the order's change. If the change fails, no email goes out. If sending fails, the order is still fine, and the email is tried again.
+- To send real emails, put a Gmail address and an app password in `MAIL_USERNAME` and `MAIL_PASSWORD`. Without them, emails are only printed in the terminal.
 
 ### Turn on PayMongo test mode (for the owner)
 
@@ -136,6 +148,9 @@ Without the keys, your own computer uses the practice page, and the live site on
 | Cashier: a receipt | ![The printed receipt and the change](docs/screenshots/receipt.png) |
 | Cashier: close the shift | ![Expected cash and the count](docs/screenshots/close-shift.png) |
 | Owner: cash shifts | ![Every shift, with the drawer's difference](docs/screenshots/shifts.png) |
+| Favorites | ![Saved products](docs/screenshots/favorites.png) |
+| Saved addresses | ![Delivery addresses](docs/screenshots/addresses.png) |
+| Owner: promos | ![Voucher codes and their uses](docs/screenshots/promos.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
 

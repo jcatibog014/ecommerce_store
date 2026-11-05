@@ -46,7 +46,8 @@
         <ul class="nav-links">
           {% if can(MANAGE_STAFF) %}{{ link('staff.index', 'Staff', endpoint == 'staff.index') }}{% endif %}
           {% if can(MANAGE_STORE) %}{{ link('staff.store', 'Store Details', endpoint == 'staff.store') }}
-            {{ link('staff.areas', 'Delivery Areas', endpoint in ('staff.areas', 'staff.save_area')) }}{% endif %}
+            {{ link('staff.areas', 'Delivery Areas', endpoint in ('staff.areas', 'staff.save_area')) }}
+            {{ link('extras.promos', 'Promos', endpoint.startswith('extras.')) }}{% endif %}
         </ul>
       {% endif %}
       <ul class="nav-links nav-links-end">

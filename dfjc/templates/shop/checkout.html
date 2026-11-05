@@ -99,10 +99,22 @@
           <li><span>{{ item.quantity }} x {{ item.unit.product.name }} <span class="row-sub">{{ item.unit.name }}</span></span><span>{{ item.line_total|peso }}</span></li>
         {% endfor %}
       </ul>
-      <dl class="sum-rows" data-summary data-subtotal="{{ summary.subtotal }}">
+      <div class="voucher-box{% if errors.voucher %} has-error{% endif %}">
+        <label class="field-label" for="voucher">Voucher code <span class="hint">Optional</span></label>
+        <div class="voucher-row">
+          <input id="voucher" type="text" name="voucher" value="{{ form.get('voucher', '') }}" maxlength="30" autocomplete="off"
+                 placeholder="SUKI50"{% if errors.voucher %} aria-invalid="true" aria-describedby="voucher-error"{% endif %}>
+          <button class="button button-quiet" type="submit" name="action" value="apply" formnovalidate>Apply</button>
+        </div>
+        {% if errors.voucher %}<p class="field-error" id="voucher-error">{{ errors.voucher }}</p>
+        {% elif voucher %}<p class="voucher-ok">{{ voucher.code }}: {{ voucher_note }}</p>{% endif %}
+      </div>
+      <dl class="sum-rows" data-summary data-subtotal="{{ summary.subtotal }}" data-discount="{{ discount }}"
+          data-free-delivery="{{ '1' if voucher and voucher.kind == 'delivery' else '' }}">
         <div><dt>Items, at retail price</dt><dd>{{ summary.subtotal|peso }}</dd></div>
         <div data-show-when="delivery"><dt>Delivery fee</dt><dd data-fee-text>Depends on the barangay</dd></div>
-        <div class="sum-total"><dt>Estimated total</dt><dd data-total-text>{{ summary.subtotal|peso }}</dd></div>
+        {% if voucher %}<div class="sum-discount"><dt>{{ voucher.code }}</dt><dd>{{ ('-' ~ discount|peso) if voucher.kind != 'delivery' else 'Free delivery' }}</dd></div>{% endif %}
+        <div class="sum-total"><dt>Estimated total</dt><dd data-total-text>{{ (summary.subtotal - discount)|peso }}</dd></div>
       </dl>
       <p class="card-note">The cashier checks your order next and may give a wholesale price, so the final total can be lower. You'll see it on the order page.</p>
       <button class="button button-wide" type="submit">Place order</button>

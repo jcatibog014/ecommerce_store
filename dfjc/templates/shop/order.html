@@ -118,6 +118,14 @@
         <h2>Timeline</h2>
         {{ timeline(order) }}
       </section>
+      {% if order.status in ('picked_up', 'delivered', 'cancelled', 'refunded') %}
+        <form method="post" action="{{ url_for('extras.buy_again', ref=order.ref) }}" class="card stack">
+          {{ csrf() }}
+          <h2>Buy These Again</h2>
+          <p class="card-note">Puts the same items in your cart, at today's prices.</p>
+          <div class="form-actions"><button class="button" type="submit">Buy again</button></div>
+        </form>
+      {% endif %}
       {% if shopper_can_cancel(order) %}
         <form method="post" action="{{ url_for('my_orders.cancel', ref=order.ref) }}" class="card stack"
               data-confirm="Cancel order {{ order.ref }}? The items go back on sale.">

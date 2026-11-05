@@ -17,7 +17,7 @@ The user wants a mini e-commerce store to practise **transactions, payment integ
 - [x] Stage 3: payments (stages 2 to 8 share one PR, branch `stages-2-to-8`, a commit per stage)
 - [x] Stage 4: fulfilment and store admin
 - [x] Stage 5: walk-in sales
-- [ ] Stage 6: shopper extras and promos
+- [x] Stage 6: shopper extras and promos
 - [ ] Stage 7: insights and phone app
 - [ ] Stage 8: demo, README and deploy
 

@@ -4,7 +4,7 @@ Moments (an order placed, a payment) are stored as naive UTC datetimes from
 utcnow(). People see them on the store's clock: DFJC is in the Philippines,
 so every page uses Asia/Manila.
 """
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import cache
 from zoneinfo import ZoneInfo
 
@@ -38,6 +38,14 @@ def local_today(moment=None):
 def day_start_utc(day):
     """Midnight at the start of day on the store's clock, as naive UTC."""
     return to_utc(datetime(day.year, day.month, day.day))
+
+
+def parse_day(text):
+    """What a <input type="date"> sends ("2026-11-12") -> a date, or None if empty or wrong."""
+    try:
+        return date.fromisoformat((text or "").strip())
+    except ValueError:
+        return None
 
 
 def week_start(day):

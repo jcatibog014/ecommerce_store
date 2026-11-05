@@ -72,6 +72,9 @@ PAGES = [
     ("order-on-the-way.png", "shopper", "{my-order:Delivered}", "light", DESKTOP),
     ("close-shift.png", "cashier", "/counter/shift", "light", DESKTOP),
     ("shifts.png", "owner", "/counter/shifts", "light", DESKTOP),
+    ("favorites.png", "shopper", "/favorites", "light", DESKTOP),
+    ("addresses.png", "shopper", "/addresses", "light", DESKTOP),
+    ("promos.png", "owner", "/manage/promos", "light", DESKTOP),
 ]
 
 

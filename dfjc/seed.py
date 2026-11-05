@@ -5,7 +5,7 @@ can open must show an example (tests/test_demo.py checks it), so each new
 feature adds its sample data here in the same pull request.
 """
 import secrets
-from datetime import timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from werkzeug.security import generate_password_hash
@@ -207,14 +207,16 @@ def fill_orders(s, store, people, moment):
     home.area = areas["San Isidro"]
     s.add(home)
 
-    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False):
+    promos = fill_promos(s, store, moment)
+
+    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False, voucher=None):
         user = people[who]
         for product_name, unit_name, quantity in lines:
             checkout.add_to_cart(s, user, units[(product_name, unit_name)], quantity, moment - ago)
         s.flush()
         area = address.area if address else None
         method = "online" if online else "cash_pickup" if fulfilment == PICKUP else "cod"
-        choice = {"fulfilment": fulfilment, "payment_method": method,
+        choice = {"fulfilment": fulfilment, "payment_method": method, "voucher": promos.get(voucher),
                   "area": area, "address": address.one_line if address else "", "note": note}
         placed, _ = checkout.place_order(s, user, store, choice, checkout.new_checkout_key(), moment - ago)
         return placed
@@ -228,14 +230,14 @@ def fill_orders(s, store, people, moment):
     cancelled = order("ana", [("Chocolate bar 30 g", "Box of 24", 1)], 4 * days)
     orders.cancel(s, cancelled, people["ana"], moment - 4 * days + hours, "I ordered the wrong size.")
     priced = order("ana", [("Cola 1.5 L", "Case of 12", 1), ("Bottled water 500 mL", "Bottle", 6)], days,
-                   DELIVERY, home, "Please call when you are near.")
+                   DELIVERY, home, "Please call when you are near.", voucher="LIBRENGHATID")
     price(priced, days - 2 * hours, wholesale_bulk=False)
     order("ana", [("Well-milled rice", "Sack of 25 kg", 1), ("Soy sauce 1 L", "Bottle", 2),
                   ("Cheese crackers", "Bundle of 10", 1)], timedelta(minutes=35))
 
     # Other shoppers: a reseller's bulk orders (one priced at wholesale), a delivery, and one the store cancelled.
     bulk = order("marites", [("Instant pancit canton 60 g", "Box of 72", 1), ("3-in-1 coffee sachet", "Box of 30", 2),
-                             ("Candles, big", "Piece", 4)], 2 * days)
+                             ("Candles, big", "Piece", 4)], 2 * days, voucher="SUKI50")
     price(bulk, 2 * days - hours, note="Wholesale price for the boxes. Salamat po!")
     order("marites", [("Instant noodles, chicken 55 g", "Box of 72", 2), ("Sardines in tomato sauce 155 g", "Case of 100", 1),
                       ("Laundry powder 70 g", "Case of 144", 1), ("Shampoo sachet 12 mL", "Strip of 12", 5)],
@@ -253,6 +255,12 @@ def fill_orders(s, store, people, moment):
     fill_payments(s, store, people, order, price, moment, ramon_home)
     fill_fulfilment(s, store, people, order, price, moment, areas, home)
     fill_counter(s, store, people, units, moment)
+
+    # Ana's favorites: what she buys every week.
+    from .models import Favorite
+    for name in ("Bottled water 500 mL", "Instant pancit canton 60 g", "3-in-1 coffee sachet", "Well-milled rice"):
+        product = s.scalar(select(Product).where(Product.store_id == store.id, Product.name == name))
+        s.add(Favorite(user_id=people["ana"].id, product_id=product.id, created_at=moment - 20 * days))
 
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
@@ -435,3 +443,31 @@ def fill_counter(s, store, people, units, moment):
     sale(shift, ana, [line("Cola 1.5 L", "Bottle", 1), line("Corn chips 100 g", "Bag", 2)], 200,
          moment - hours + 5 * timedelta(minutes=1))
     s.flush()
+
+
+# ---------- Stage 6: promos ----------
+
+def fill_promos(s, store, moment):
+    """Two codes on the home page, one that starts in December, one that ended. Returns them by code."""
+    from .dates import local_today
+    from .models import VOUCHER_AMOUNT, VOUCHER_DELIVERY, VOUCHER_PERCENT, Voucher
+
+    today = local_today(moment)
+    made = {}
+    for code, kind, value, min_spend, max_uses, starts, ends, description, active in (
+            ("SUKI50", VOUCHER_AMOUNT, centavos(50), centavos(1000), 100, None, today + timedelta(days=30),
+             "For our suki: 50 pesos off big orders.", True),
+            ("LIBRENGHATID", VOUCHER_DELIVERY, 0, centavos(500), None, None, None,
+             "Our rider brings it for free.", True),
+            ("PASKO10", VOUCHER_PERCENT, 10, 0, 20, date(today.year, 12, 1), date(today.year, 12, 31),
+             "Christmas: 10 percent off.", True),
+            ("BAGONGTAON", VOUCHER_AMOUNT, centavos(30), 0, 50, today - timedelta(days=300), today - timedelta(days=280),
+             "New Year promo.", True)):
+        voucher = Voucher(store_id=store.id, code=code, kind=kind, value=value, min_spend=min_spend,
+                          max_uses=max_uses, starts_on=starts, ends_on=ends, description=description,
+                          is_active=active, used_count=12 if code == "BAGONGTAON" else 0,
+                          created_at=moment - timedelta(days=40))
+        s.add(voucher)
+        made[code] = voucher
+    s.flush()
+    return made

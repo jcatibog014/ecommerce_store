@@ -31,7 +31,7 @@
   <dl class="sum-rows">
     <div><dt>Items{% if not order.is_priced %}, at retail price{% endif %}</dt><dd>{{ order.subtotal|peso }}</dd></div>
     {% if order.fulfilment == 'delivery' %}<div><dt>Delivery fee ({{ order.area_name }})</dt><dd>{{ order.delivery_fee|peso }}</dd></div>{% endif %}
-    {% if order.discount %}<div><dt>Discount</dt><dd>-{{ order.discount|peso }}</dd></div>{% endif %}
+    {% if order.discount %}<div class="sum-discount"><dt>Voucher {{ order.voucher_code }}</dt><dd>-{{ order.discount|peso }}</dd></div>{% endif %}
     <div class="sum-total"><dt>{{ total_label(order) }}</dt><dd>{{ order.total|peso }}</dd></div>
   </dl>
 {% endmacro %}

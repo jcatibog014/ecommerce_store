@@ -78,7 +78,8 @@ def create_app(test_config=None):
     from .models import (
         CATEGORY_ICONS, FULFILMENTS, MOVE_REASONS, PAYMENT_METHODS, PAYMENT_STATUS_LABELS, PRICE_TYPES, ROLE_LABELS,
     )
-    from .views import cart, counter, fulfil, manage, my_orders, payments, settings, shop, staff, staff_orders
+    from . import notices
+    from .views import cart, counter, extras, fulfil, manage, my_orders, payments, settings, shop, staff, staff_orders
 
     db.init_app(app)
     auth.init_app(app)
@@ -88,9 +89,11 @@ def create_app(test_config=None):
     cart.init_app(app)
     staff_orders.init_app(app)
     fulfil.init_app(app)
+    extras.init_app(app)
+    notices.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
     for blueprint in (auth.bp, shop.bp, cart.bp, my_orders.bp, payments.bp, manage.bp, staff_orders.bp, fulfil.bp,
-                      counter.bp, staff.bp, settings.bp):
+                      counter.bp, extras.bp, staff.bp, settings.bp):
         app.register_blueprint(blueprint)
 
     app.jinja_env.globals.update(APP_NAME="DFJC Store", ROLE_LABELS=ROLE_LABELS, CATEGORY_ICONS=CATEGORY_ICONS,

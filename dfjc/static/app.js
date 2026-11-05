@@ -185,7 +185,8 @@ function setUpCheckout() {
   const form = document.querySelector("[data-checkout]");
   if (!form) return;
   const summary = form.querySelector("[data-summary]");
-  const subtotal = Number(summary.dataset.subtotal);
+  const subtotal = Number(summary.dataset.subtotal) - Number(summary.dataset.discount || 0);
+  const freeDelivery = Boolean(summary.dataset.freeDelivery);
   const newFields = form.querySelector("[data-new-address-fields]");
   const update = () => {
     const how = (form.querySelector('input[name="fulfilment"]:checked') || {}).value || "pickup";
@@ -204,7 +205,8 @@ function setUpCheckout() {
       }
     }
     form.querySelector("[data-fee-text]").textContent = fee === null ? "Depends on the barangay" : peso(fee);
-    form.querySelector("[data-total-text]").textContent = peso(subtotal + (how === "delivery" && fee ? fee : 0));
+    const charged = how === "delivery" && fee && !freeDelivery ? fee : 0;
+    form.querySelector("[data-total-text]").textContent = peso(subtotal + charged);
   };
   form.addEventListener("change", update);
   update();

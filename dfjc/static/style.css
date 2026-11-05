@@ -889,5 +889,25 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
   .receipt { border: 0; width: 72mm; margin: 0 auto; }
 }
 
+/* ---------- Favorites, addresses and promos ---------- */
+
+.product-status { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+.product-status form { margin: 0; }
+.favorite-button.is-saved { color: var(--red); border-color: var(--red); }
+.promo-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: .75rem; }
+.promo { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; padding: .9rem 1rem; border-radius: var(--radius); background: var(--surface); border: 2px dashed var(--red); }
+.promo-code { display: inline-block; padding: .15rem .55rem; border-radius: var(--radius-small); background: var(--red); color: #fff; font-family: Consolas, Menlo, monospace; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.voucher-box { margin: 1rem 0 0; }
+.voucher-row { display: flex; gap: .5rem; margin-top: .3rem; }
+.voucher-row input { flex: 1; min-width: 0; min-height: var(--control-height); padding: .4rem .7rem; border: 1px solid var(--rule-strong); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); font: inherit; text-transform: uppercase; }
+.voucher-box.has-error input { border-color: var(--red); }
+.voucher-ok { margin: .35rem 0 0; color: var(--green); font-weight: 600; font-size: .92rem; }
+.sum-discount dd { color: var(--green); }
+.address-list { display: grid; gap: .75rem; margin-bottom: 1.25rem; }
+.address-card { margin: 0; }
+.address-card summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; list-style: none; cursor: pointer; }
+.address-card summary::-webkit-details-marker { display: none; }
+.address-card[open] summary { margin-bottom: 1rem; }
+
 /* Thin scrollbars in the theme's colours, wherever something scrolls. */
 * { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }

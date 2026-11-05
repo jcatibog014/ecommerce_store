@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty %}
+{% block title %}Shifts - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('counter.index') }}">&larr; Counter</a>
+  <div class="page-head">
+    <h1>{{ 'Cash Shifts' if everyone else 'My Shifts' }}</h1>
+    <p class="page-sub">Each shift's expected cash and the count at the end. A difference means the drawer has more or less than it should.</p>
+  </div>
+  {% if shifts %}
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th scope="col">Opened</th>{% if everyone %}<th scope="col">Cashier</th>{% endif %}<th scope="col">Closed</th>
+          <th scope="col" class="num">Sales</th><th scope="col" class="num">Expected</th><th scope="col" class="num">Counted</th><th scope="col" class="num">Difference</th></tr></thead>
+        <tbody>
+          {% for shift in shifts %}
+            {% set sums = sums[shift.id] %}
+            <tr>
+              <th scope="row">{{ shift.opened_at|nice_datetime }}</th>
+              {% if everyone %}<td>{{ shift.cashier.name if shift.cashier else '' }}</td>{% endif %}
+              <td>{% if shift.closed_at %}{{ shift.closed_at|nice_time }}{% else %}<span class="pill pill-on">Open now</span>{% endif %}</td>
+              <td class="num">{{ sums.sales|peso }}<span class="row-sub">{{ sums.sale_count }} sales</span></td>
+              <td class="num">{{ (shift.expected_cash if shift.expected_cash is not none else sums.expected)|peso }}</td>
+              <td class="num">{{ shift.counted_cash|peso if shift.counted_cash is not none else '' }}</td>
+              <td class="num">{% if shift.difference is not none %}
+                <span class="{{ 'change-up' if shift.difference > 0 else 'change-down' if shift.difference < 0 else '' }}">{{ 'Matches' if shift.difference == 0 else shift.difference|peso }}</span>{% endif %}
+                {% if shift.note %}<span class="row-sub">{{ shift.note }}</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty('No Shifts Yet', 'Open a shift on the Counter page to start selling.') }}
+  {% endif %}
+{% endblock %}

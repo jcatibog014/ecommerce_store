@@ -21,6 +21,7 @@
       {% if can(SEE_ORDERS) %}
         <p class="nav-heading">Sell</p>
         <ul class="nav-links">
+          {% if can(COUNTER) %}{{ link('counter.index', 'Counter', endpoint.startswith('counter.')) }}{% endif %}
           {{ link('staff_orders.index', 'Orders', endpoint.startswith('staff_orders.'), to_price_count) }}
           {% if can(PACK_ORDERS) %}{{ link('fulfil.board', 'Packing', endpoint == 'fulfil.board', to_pack_count) }}{% endif %}
           {{ link('fulfil.deliveries', 'Deliveries', endpoint == 'fulfil.deliveries', out_count) }}

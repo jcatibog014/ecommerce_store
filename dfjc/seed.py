@@ -252,6 +252,7 @@ def fill_orders(s, store, people, moment):
 
     fill_payments(s, store, people, order, price, moment, ramon_home)
     fill_fulfilment(s, store, people, order, price, moment, areas, home)
+    fill_counter(s, store, people, units, moment)
 
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
@@ -390,4 +391,47 @@ def fill_fulfilment(s, store, people, order, price, moment, areas, ana_home):
     soap = units["Bath soap 90 g"]
     s.refresh(soap)
     stock.count(s, soap, soap.stock_pieces - 2, soap.stock_pieces, lorna, moment - days, "Two bars were wet. Thrown away.")
+    s.flush()
+
+
+# ---------- Stage 5: the counter ----------
+
+def fill_counter(s, store, people, units, moment):
+    """Ana's shift is open today with a few sales (one wholesale, one voided); Lorna's two shifts
+    from earlier are closed, one with the drawer 20 pesos short."""
+    from . import counter
+    from .models import RETAIL, WHOLESALE
+
+    hours, days = timedelta(hours=1), timedelta(days=1)
+
+    def line(product, unit, quantity, kind=RETAIL):
+        return [units[(product, unit)].id, quantity, kind]
+
+    def sale(shift, cashier, ticket, cash, at):
+        done, _ = counter.sell(s, store, shift, cashier, ticket, centavos(cash), counter.new_key(), at)
+        return done
+
+    lorna = people["lorna"]
+    for days_ago, short in ((2, 0), (1, 20)):
+        opened = moment - days_ago * days - 10 * hours
+        shift = counter.open_shift(s, store, lorna, centavos(1000), opened)
+        sale(shift, lorna, [line("Bottled water 500 mL", "Bottle", 3), line("Cheese crackers", "Pack", 5)], 100,
+             opened + hours)
+        sale(shift, lorna, [line("Instant noodles, chicken 55 g", "Box of 72", 1, WHOLESALE)], 1000, opened + 3 * hours)
+        sale(shift, lorna, [line("Candles, big", "Piece", 4), line("Assorted candies", "Piece", 20)], 100,
+             opened + 6 * hours)
+        expected = counter.summary(s, shift, opened + 9 * hours)["expected"]
+        counter.close_shift(s, shift, expected - centavos(short),
+                            "Short 20 pesos. Maybe wrong change at lunch." if short else "", opened + 9 * hours)
+
+    ana = people["ana"]
+    shift = counter.open_shift(s, store, ana, centavos(1500), moment - 3 * hours)
+    sale(shift, ana, [line("Soy sauce 1 L", "Bottle", 1), line("Cane vinegar 1 L", "Bottle", 1)], 100,
+         moment - 2 * hours)
+    sale(shift, ana, [line("Corned beef 150 g", "Case of 48", 1, WHOLESALE),
+                      line("Laundry powder 70 g", "Strip of 6", 10, WHOLESALE)], 3000, moment - 90 * timedelta(minutes=1))
+    oops = sale(shift, ana, [line("Cola 1.5 L", "Case of 12", 1)], 1000, moment - hours)
+    counter.void(s, oops, ana, moment - hours + 3 * timedelta(minutes=1), "Rang up a case instead of one bottle")
+    sale(shift, ana, [line("Cola 1.5 L", "Bottle", 1), line("Corn chips 100 g", "Bag", 2)], 200,
+         moment - hours + 5 * timedelta(minutes=1))
     s.flush()

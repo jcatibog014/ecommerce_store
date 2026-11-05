@@ -11,7 +11,8 @@
                         └─< payments ──< refunds
     payment_events (every webhook PayMongo sent us, each event id once)
     stores ─┬─< stock_moves (every change to a product's stock: why, how many, who)
-            └─< remittances (cash a rider hands to the cashier) ──< payments (cash on delivery)
+            ├─< remittances (cash a rider hands to the cashier) ──< payments (cash on delivery)
+            └─< cash_shifts (a cashier's drawer) ──< walkin_sales (the counter) ──< walkin_lines
 
     users ─┬─< cart_items ──> product_units
            ├─< addresses ──> delivery_areas
@@ -27,7 +28,7 @@ Moments are naive UTC (dates.utcnow()).
 """
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import utcnow
@@ -585,3 +586,86 @@ class Remittance(Base):
 
     rider: Mapped[User | None] = relationship(foreign_keys=[rider_id])
     received_by: Mapped[User | None] = relationship(foreign_keys=[received_by_id])
+
+
+# ---------- Stage 5: the counter ----------
+
+class CashShift(Base):
+    """A cashier's turn at the drawer: the cash at the start, and the count at the end."""
+    __tablename__ = "cash_shifts"
+    __table_args__ = (
+        # At most one OPEN shift per cashier: a second "Open shift" at the same moment fails here.
+        Index("uq_cash_shifts_one_open", "store_id", "cashier_id", unique=True,
+              sqlite_where=text("closed_at IS NULL"), postgresql_where=text("closed_at IS NULL")),
+        CheckConstraint("opening_cash >= 0", name="opening_not_negative"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"))
+    cashier_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    opening_cash: Mapped[int]
+    opened_at: Mapped[datetime] = mapped_column(default=utcnow)
+    closed_at: Mapped[datetime | None]
+    expected_cash: Mapped[int | None]  # worked out when it closes
+    counted_cash: Mapped[int | None]
+    note: Mapped[str] = mapped_column(String(300), default="")
+
+    cashier: Mapped[User | None] = relationship()
+    sales: Mapped[list["WalkinSale"]] = relationship(back_populates="shift", order_by="WalkinSale.id")
+
+    @property
+    def difference(self):
+        if self.counted_cash is None or self.expected_cash is None:
+            return None
+        return self.counted_cash - self.expected_cash
+
+
+class WalkinSale(Base):
+    __tablename__ = "walkin_sales"
+    __table_args__ = (
+        CheckConstraint("total >= 0 AND cash_given >= total AND change = cash_given - total", name="cash_adds_up"),
+        Index("ix_walkin_sales_store_created", "store_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"))
+    shift_id: Mapped[int] = mapped_column(ForeignKey("cash_shifts.id", ondelete="CASCADE"), index=True)
+    cashier_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    price_type: Mapped[str] = mapped_column(String(10), default=RETAIL)
+    total: Mapped[int]
+    cash_given: Mapped[int]
+    change: Mapped[int]
+    # The idempotency key of the ticket: pressing Pay twice records one sale.
+    ticket_key: Mapped[str] = mapped_column(String(64), unique=True)
+    voided_at: Mapped[datetime | None]
+    void_reason: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    shift: Mapped[CashShift] = relationship(back_populates="sales")
+    cashier: Mapped[User | None] = relationship()
+    lines: Mapped[list["WalkinLine"]] = relationship(back_populates="sale", order_by="WalkinLine.id",
+                                                     cascade="all, delete-orphan", passive_deletes=True)
+
+    @property
+    def receipt_no(self):
+        return f"R-{self.id:06d}"
+
+
+class WalkinLine(Base):
+    __tablename__ = "walkin_lines"
+    __table_args__ = (CheckConstraint("quantity >= 1", name="quantity_positive"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sale_id: Mapped[int] = mapped_column(ForeignKey("walkin_sales.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"))
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("product_units.id", ondelete="SET NULL"))
+    product_name: Mapped[str] = mapped_column(String(80))
+    unit_name: Mapped[str] = mapped_column(String(40))
+    pieces_per_unit: Mapped[int]
+    quantity: Mapped[int]
+    pieces: Mapped[int]
+    price_type: Mapped[str] = mapped_column(String(10))
+    unit_price: Mapped[int]
+    line_total: Mapped[int]
+
+    sale: Mapped[WalkinSale] = relationship(back_populates="lines")

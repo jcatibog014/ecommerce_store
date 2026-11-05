@@ -241,7 +241,36 @@ function setUpPriceForm() {
   update();
 }
 
+// The counter: the change shows as the cash given is typed (the server works it out again).
+function setUpChange() {
+  const form = document.querySelector("[data-change-form]");
+  if (!form) return;
+  const total = Number(form.dataset.total);
+  const input = form.querySelector('input[name="cash_given"]');
+  const line = form.querySelector("[data-change-text]");
+  const update = () => {
+    const raw = input.value.replace(/[,\s₱]/g, "");
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) { line.hidden = true; return; }
+    const [whole, cents = ""] = raw.split(".");
+    const given = Number(whole) * 100 + Number((cents + "00").slice(0, 2));
+    line.hidden = false;
+    line.classList.toggle("is-short", given < total);
+    line.textContent = given < total ? `Short by ${peso(total - given)}` : `Change: ${peso(given - total)}`;
+  };
+  input.addEventListener("input", update);
+}
+
+// "Print receipt" (the page's print styles show only the receipt).
+function setUpPrint() {
+  document.querySelectorAll("[data-print]").forEach((button) => {
+    button.hidden = false;
+    button.addEventListener("click", () => window.print());
+  });
+}
+
 setUpTheme();
+setUpChange();
+setUpPrint();
 setUpCheckout();
 setUpPriceForm();
 setUpToasts();

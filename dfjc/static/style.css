@@ -835,5 +835,59 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .csv-sample { overflow-x: auto; padding: .75rem; border-radius: var(--radius-small); background: var(--surface-soft); border: 1px solid var(--rule); font-size: .82rem; }
 .import-errors { margin: .5rem 0 0; padding-left: 1.2rem; }
 
+/* ---------- The counter ---------- */
+
+.counter-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@container main (min-width: 60rem) { .counter-layout { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.counter-layout > .card { margin-bottom: 0; }
+.counter-search { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.counter-search input { flex: 1; min-width: 0; min-height: 3rem; padding: .5rem .9rem; border: 2px solid var(--rule-strong); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); font: inherit; font-size: 1.1rem; }
+.counter-search input:focus { border-color: var(--accent); outline: 2px solid var(--accent-ring); }
+.counter-search .button { min-height: 3rem; }
+.counter-product { padding: .75rem 0; border-bottom: 1px solid var(--rule); }
+.counter-product:last-child { border-bottom: 0; }
+.counter-product-name { display: flex; align-items: center; gap: .75rem; margin-bottom: .4rem; }
+.counter-unit { display: grid; grid-template-columns: minmax(0, 1fr) 4.25rem auto auto; gap: .4rem; align-items: center; margin: .3rem 0 0 3.5rem; }
+.counter-unit-name { font-weight: 600; }
+@container main (max-width: 40rem) { .counter-unit { grid-template-columns: minmax(0, 1fr) 4.25rem; margin-left: 0; } }
+.ticket { position: sticky; top: 1rem; border-top: 5px solid var(--accent); }
+.ticket-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what total" "qty qty"; gap: .3rem .75rem; padding: .65rem 0; border-bottom: 1px solid var(--rule); }
+.ticket-line.is-wholesale { box-shadow: inset 4px 0 0 var(--bamboo-deep); padding-left: .6rem; }
+.ticket-what { grid-area: what; min-width: 0; }
+.ticket-total { grid-area: total; font-weight: 700; white-space: nowrap; }
+.ticket-qty { grid-area: qty; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; margin: 0; font-size: .9rem; }
+.danger-link { color: var(--red); }
+.pay-box { margin-top: .5rem; }
+.pay-box .money-input input { font-size: 1.25rem; min-height: 3rem; }
+.change-line { margin: 0; font-family: var(--headline); font-size: 1.4rem; font-weight: 800; color: var(--green); }
+.change-line.is-short { color: var(--red); }
+.data-table tr.is-voided > * { color: var(--ink-soft); text-decoration: line-through; }
+.open-shift { margin-top: 1rem; }
+
+/* The receipt: a narrow slip. When printing, only the slip shows. */
+.receipt-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@container main (min-width: 48rem) { .receipt-layout { grid-template-columns: 20rem minmax(0, 1fr); } }
+.receipt { padding: 1.25rem 1rem; background: #fff; color: #111; border: 1px dashed #999; font-family: Consolas, Menlo, monospace; font-size: .85rem; line-height: 1.45; }
+.receipt-head { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: .6rem; }
+.receipt-head strong { font-size: 1.05rem; }
+.receipt-meta { margin: .4rem 0; text-align: center; }
+.receipt-lines { width: 100%; border-collapse: collapse; border-top: 1px dashed #999; border-bottom: 1px dashed #999; margin: .5rem 0; }
+.receipt-lines td { padding: .05rem 0; }
+.receipt-qty { padding-left: .75rem !important; }
+.receipt-sums { margin: .5rem 0; }
+.receipt-sums > div { display: flex; justify-content: space-between; }
+.receipt-sums dd { margin: 0; }
+.receipt-sums > div:first-child { font-weight: 700; font-size: 1rem; }
+.receipt-thanks { margin: .75rem 0 0; text-align: center; }
+.receipt-void { margin: .4rem 0; padding: .2rem; text-align: center; border: 2px solid #b00; color: #b00; font-weight: 700; }
+.receipt.is-voided .receipt-lines, .receipt.is-voided .receipt-sums { text-decoration: line-through; }
+@media print {
+  body { background: #fff !important; }
+  .sidebar, .shop-header, .demo-bar, .no-print, .flashes, .shop-footer { display: none !important; }
+  .page { padding: 0 !important; }
+  .receipt-layout { display: block; }
+  .receipt { border: 0; width: 72mm; margin: 0 auto; }
+}
+
 /* Thin scrollbars in the theme's colours, wherever something scrolls. */
 * { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }

@@ -70,6 +70,8 @@ PAGES = [
     ("stock-history.png", "cashier", "/manage/stock", "light", DESKTOP),
     ("import.png", "owner", "/manage/products/import", "light", DESKTOP),
     ("order-on-the-way.png", "shopper", "{my-order:Delivered}", "light", DESKTOP),
+    ("close-shift.png", "cashier", "/counter/shift", "light", DESKTOP),
+    ("shifts.png", "owner", "/counter/shifts", "light", DESKTOP),
 ]
 
 
@@ -134,6 +136,23 @@ def shoot_sandbox(page):
     page.get_by_role("button", name="Go back without paying").click()
 
 
+def shoot_counter(page):
+    """The counter with a sale rung up, then its receipt."""
+    view_as(page, "cashier")
+    page.goto(f"{BASE}/counter?q=pancit")
+    page.locator(".counter-unit", has_text="Box of 72").first.get_by_role("button", name="Wholesale").click()
+    page.goto(f"{BASE}/counter?q=soy")
+    page.locator(".counter-unit", has_text="Bottle").first.get_by_role("button", name="Retail").click()
+    page.goto(f"{BASE}/counter?q=candles")
+    page.locator(".counter-unit", has_text="Piece").first.locator("input[name=quantity]").fill("4")
+    page.locator(".counter-unit", has_text="Piece").first.get_by_role("button", name="Retail").click()
+    page.locator('input[name="cash_given"]').fill("2000")
+    save(page, "counter.png")
+    page.get_by_role("button", name="Pay and print receipt").click()
+    page.wait_for_url("**/counter/sales/**")
+    save(page, "receipt.png")
+
+
 def shoot_visitor_pages(browser):
     page = browser.new_page(viewport=DESKTOP, color_scheme="light")
     for name, path in (("login.png", "/login"), ("signup.png", "/signup")):
@@ -157,6 +176,7 @@ def main():
             page.goto(f"{BASE}{address(page, path)}")
             save(page, name)
         shoot_sandbox(pages[("light", DESKTOP["width"])])
+        shoot_counter(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

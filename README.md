@@ -29,6 +29,9 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 - Hands over pickup orders (and takes the cash), or sends delivery orders out with a rider.
 - Receives the cash riders collected (**Rider Cash**).
 - Adds new stock (**Restock**) and saves a **stock count**. Every change is in the **Stock History**.
+- Sells to walk-in customers at the **Counter**: type a name or scan a barcode, choose retail or wholesale for each line, type the cash given, and see the change. Then print the receipt.
+- Opens a **shift** with the cash in the drawer, and closes it with a count. The store sees if the drawer has more or less than it should.
+- Voids a counter sale made by mistake. The items go back in stock.
 - Chooses **Retail** or **Wholesale** for each line (or for all lines at once). The total changes as you click.
 - Confirms the price. Then the shopper sees the final total.
 - Cancels an order with a reason. The items go back on sale.
@@ -129,6 +132,10 @@ Without the keys, your own computer uses the practice page, and the live site on
 | Stock history | ![Every change to stock](docs/screenshots/stock-history.png) |
 | Owner: import products | ![Import from a CSV file](docs/screenshots/import.png) |
 | A delivered order | ![A delivered order](docs/screenshots/order-on-the-way.png) |
+| Cashier: the counter | ![A walk-in sale with retail and wholesale lines](docs/screenshots/counter.png) |
+| Cashier: a receipt | ![The printed receipt and the change](docs/screenshots/receipt.png) |
+| Cashier: close the shift | ![Expected cash and the count](docs/screenshots/close-shift.png) |
+| Owner: cash shifts | ![Every shift, with the drawer's difference](docs/screenshots/shifts.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
 

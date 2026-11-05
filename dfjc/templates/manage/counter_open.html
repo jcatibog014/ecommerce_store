@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, money_field %}
+{% block title %}Counter - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Counter</h1>
+    <p class="page-sub">Open your shift to start selling. Count the cash in the drawer first.</p>
+  </div>
+  <form method="post" action="{{ url_for('counter.open_shift') }}" class="card stack narrow-form open-shift">
+    {{ csrf() }}
+    <h2>Open My Shift</h2>
+    {{ money_field('opening_cash', 'Cash in the drawer now', hint='For change', attrs='required autofocus') }}
+    <div class="form-actions"><button class="button" type="submit">Open shift</button></div>
+  </form>
+  {% if recent %}
+    <p><a href="{{ url_for('counter.shifts_page') }}">See your past shifts</a></p>
+  {% endif %}
+{% endblock %}

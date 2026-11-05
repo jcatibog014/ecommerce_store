@@ -85,7 +85,7 @@ def demo_page(browser, theme, size):
     page = browser.new_page(viewport=size, color_scheme=theme)
     page.goto(f"{BASE}/login")
     page.get_by_role("button", name="Try Demo").click()
-    page.wait_for_url(f"{BASE}/")
+    page.wait_for_url(f"{BASE}/", timeout=120000)  # making a demo store takes a while
     return page
 
 

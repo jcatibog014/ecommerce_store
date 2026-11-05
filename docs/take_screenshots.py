@@ -61,6 +61,15 @@ PAGES = [
     ("staff-paid-order.png", "cashier", "{staff-order:confirmed:Paid}", "light", DESKTOP),
     ("staff-refunded-order.png", "cashier", "{staff-order:cancelled:Refunded}", "light", DESKTOP),
     ("orders-waiting.png", "cashier", "/manage/orders?tab=waiting", "light", DESKTOP),
+    ("packing.png", "cashier", "/manage/packing", "light", DESKTOP),
+    ("packing-dark.png", "cashier", "/manage/packing", "dark", DESKTOP),
+    ("deliveries.png", "rider", "/deliveries", "light", DESKTOP),
+    ("phone-deliveries.png", "rider", "/deliveries", "light", PHONE),
+    ("rider-cash.png", "cashier", "/manage/rider-cash", "light", DESKTOP),
+    ("product-stock.png", "cashier", "{water-admin}#stock", "light", DESKTOP),
+    ("stock-history.png", "cashier", "/manage/stock", "light", DESKTOP),
+    ("import.png", "owner", "/manage/products/import", "light", DESKTOP),
+    ("order-on-the-way.png", "shopper", "{my-order:Delivered}", "light", DESKTOP),
 ]
 
 

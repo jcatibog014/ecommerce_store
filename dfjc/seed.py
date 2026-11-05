@@ -10,7 +10,8 @@ from datetime import timedelta
 from sqlalchemy import select
 from werkzeug.security import generate_password_hash
 
-from . import invites
+from . import invites, stock
+from .stock import starting_stock
 from .models import CASHIER, OWNER, RIDER, SHOPPER, Category, Product, ProductUnit, Store, User
 
 DEMO_LIFETIME = timedelta(hours=2)
@@ -127,6 +128,8 @@ def fill(s, store, moment):
                 product.units.append(ProductUnit(name=unit_name, pieces_per_unit=pieces,
                                                  retail_price=centavos(retail), wholesale_price=centavos(wholesale)))
             s.add(product)
+            s.flush()
+            starting_stock(s, product, None, created)
             added += 1
     name, description, stock, low, icon, units = SWITCHED_OFF
     product = Product(store_id=store.id, category_id=by_icon[icon].id, name=name, description=description,
@@ -170,7 +173,8 @@ def make_demo(s, moment):
     used.used_at, used.used_by_id = moment - timedelta(days=45), rider.id
     invites.create_invite(s, store, CASHIER, "New cashier for the night shift", visitor, moment - timedelta(days=1))
     fill(s, store, moment)
-    fill_orders(s, store, {"ana": visitor, "lorna": cashier, "marites": marites, "ramon": ramon}, moment)
+    fill_orders(s, store, {"ana": visitor, "lorna": cashier, "jun": rider, "marites": marites, "ramon": ramon},
+                moment)
     return visitor
 
 
@@ -247,6 +251,7 @@ def fill_orders(s, store, people, moment):
           DELIVERY, ramon_home)
 
     fill_payments(s, store, people, order, price, moment, ramon_home)
+    fill_fulfilment(s, store, people, order, price, moment, areas, home)
 
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
@@ -294,3 +299,95 @@ def fill_payments(s, store, people, order, price, moment, ramon_home):
     s.flush()
     payments.refund(s, refunded, people["lorna"], moment - timedelta(days=1),
                     "Sorry, the rice sack was torn when it arrived from the supplier.", sandbox)
+
+
+# ---------- Stage 4: packing, pickup, the rider, and the stock history ----------
+
+def fill_fulfilment(s, store, people, order, price, moment, areas, ana_home):
+    """Something in every column of the Packing board, a delivery out with Jun, cash Jun still
+    holds, yesterday's cash hand-over, and restocks and a count in the stock history."""
+    from . import fulfil
+    from .models import DELIVERY, Address
+
+    minutes, hours, days = timedelta(minutes=1), timedelta(hours=1), timedelta(days=1)
+    lorna, jun = people["lorna"], people["jun"]
+    nena = person(s, store, "Nena Bautista", "nena.bautista@example.com", SHOPPER, "09221234567", moment, 30)
+    carlo = person(s, store, "Carlo Mendoza", "carlo.mendoza@example.com", SHOPPER, "09231234567", moment, 25)
+    lito = person(s, store, "Lito Ramos", "lito.ramos@example.com", SHOPPER, "09241234567", moment, 15)
+    people.update(nena=nena, carlo=carlo, lito=lito)
+
+    def address(user, street, area_name, landmark=""):
+        new = Address(user_id=user.id, label="Home", area_id=areas[area_name].id, street=street, landmark=landmark,
+                      created_at=moment - 10 * days)
+        new.area = areas[area_name]
+        s.add(new)
+        return new
+
+    lito_home = address(lito, "8 Bonifacio Street", "Santa Cruz", "the sari-sari store with a green roof")
+    carlo_home = address(carlo, "21 Aguinaldo Street", "Bagong Silang")
+
+    def through(placed, steps, ago, rider=None):
+        """Walk an order through steps ("pack", "packed", "send_out", "picked_up", "delivered"),
+        one minute apart, ending ago before now."""
+        at = moment - ago - len(steps) * 10 * minutes
+        for step in steps:
+            at += 10 * minutes
+            if step == "pack":
+                fulfil.start_packing(s, placed, lorna, at)
+            elif step == "packed":
+                fulfil.packed(s, placed, lorna, at)
+            elif step == "send_out":
+                fulfil.send_out(s, placed, rider or jun, lorna, at)
+            elif step == "picked_up":
+                fulfil.hand_over(s, placed, lorna, at)
+            elif step == "delivered":
+                fulfil.delivered(s, placed, rider or jun, "rider", at)
+        return placed
+
+    # Last week Ana's delivery came, and the cash was handed over the next day.
+    old = order("ana", [("Sardines in tomato sauce 155 g", "Can", 10), ("Iodized salt 500 g", "Pack", 2)], 7 * days,
+                DELIVERY, ana_home)
+    price(old, 7 * days - hours, wholesale_bulk=False)
+    through(old, ["pack", "packed", "send_out", "delivered"], 7 * days - 3 * hours)
+    fulfil.remit(s, store, jun, [payment.id for payment in fulfil.cash_with(s, jun)], lorna, moment - 6 * days)
+
+    # Yesterday: Carlo's delivery, cash handed over in the evening.
+    yesterday = order("carlo", [("Cooking oil 1 L", "Case of 12", 1)], days + 6 * hours, DELIVERY, carlo_home)
+    price(yesterday, days + 5 * hours)
+    through(yesterday, ["pack", "packed", "send_out", "delivered"], days + 2 * hours)
+    fulfil.remit(s, store, jun, [payment.id for payment in fulfil.cash_with(s, jun)], lorna, moment - days + 3 * hours)
+
+    # This morning: Nena picked up her wholesale order; Lito's delivery came (Jun still has that cash).
+    picked = order("nena", [("Instant noodles, chicken 55 g", "Box of 72", 1), ("Candles, big", "Pack of 10", 2)],
+                   5 * hours)
+    price(picked, 4 * hours + 30 * minutes, note="Wholesale for the box of noodles.")
+    through(picked, ["pack", "packed", "picked_up"], 3 * hours)
+    morning = order("lito", [("Brown sugar", "Kilo", 3), ("Dishwashing liquid 250 mL", "Bottle", 2)], 4 * hours,
+                    DELIVERY, lito_home)
+    price(morning, 3 * hours + 40 * minutes, wholesale_bulk=False)
+    through(morning, ["pack", "packed", "send_out", "delivered"], 2 * hours)
+
+    # On the board now: packing, ready for pickup, ready to go out, out with Jun.
+    packing = order("nena", [("Laundry powder 70 g", "Strip of 6", 4), ("Bath soap 90 g", "Bar", 6)], 2 * hours,
+                    note="Please pack the soap separately.")
+    price(packing, 100 * minutes)
+    through(packing, ["pack"], 15 * minutes)
+    ready = order("carlo", [("Soy sauce 1 L", "Case of 12", 1), ("Cane vinegar 1 L", "Bottle", 3)], 3 * hours)
+    price(ready, 150 * minutes)
+    through(ready, ["pack", "packed"], 40 * minutes)
+    to_send = order("lito", [("Well-milled rice", "Kilo", 10)], 2 * hours, DELIVERY, lito_home)
+    price(to_send, 100 * minutes, wholesale_bulk=False)
+    through(to_send, ["pack", "packed"], 25 * minutes)
+    out = order("carlo", [("Bottled water 500 mL", "Case of 24", 2), ("Chocolate bar 30 g", "Bar", 5)],
+                90 * minutes, DELIVERY, carlo_home, note="Leave it with the guard if I am not home.")
+    price(out, 80 * minutes, wholesale_bulk=False)
+    through(out, ["pack", "packed", "send_out"], 10 * minutes)
+
+    # The stock history: deliveries from the supplier and a monthly count.
+    units = {product.name: product for product in s.scalars(select(Product).where(Product.store_id == store.id))}
+    stock.restock(s, units["Cup noodles, beef"], 24, lorna, moment - 3 * days, "Supplier: Mabuhay Trading, receipt 4417")
+    stock.restock(s, units["Cooking oil 1 L"], 24, people["ana"], moment - 2 * days, "Two cases from the market")
+    soap = units["Bath soap 90 g"]
+    s.refresh(soap)
+    stock.count(s, soap, soap.stock_pieces - 2, soap.stock_pieces, lorna, moment - days, "Two bars were wet. Thrown away.")
+    s.flush()

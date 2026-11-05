@@ -8,11 +8,11 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
-from .. import catalog, db, photos
+from .. import catalog, db, forms, importer, photos, stock
 from ..auth import not_for_demo
 from ..dates import utcnow
-from ..models import CATEGORY_ICONS, Category, Photo, Product, ProductUnit
-from ..permissions import MANAGE_PRODUCTS, SEE_PRODUCTS, can, needs
+from ..models import CATEGORY_ICONS, MOVE_REASONS, Category, Photo, Product, ProductUnit
+from ..permissions import IMPORT_PRODUCTS, MANAGE_PRODUCTS, MANAGE_STOCK, SEE_PRODUCTS, can, needs
 from ..stores import get_in_store
 
 bp = Blueprint("manage", __name__, url_prefix="/manage")
@@ -68,6 +68,8 @@ def new_product():
             product = Product(store_id=g.store.id, created_at=moment, updated_at=moment, **values)
             product.units.append(ProductUnit(**unit))
             s.add(product)
+            s.flush()
+            stock.starting_stock(s, product, g.user, moment)  # the first line of its stock history
             s.commit()
             flash(f"{product.name} is in the store now, sold by the {unit['name'].lower()}. Add more units below.")
             return to_product(product, "units")
@@ -86,11 +88,8 @@ def product(product_id):
     if request.method == "POST":
         if not can(MANAGE_PRODUCTS):
             abort(403, "Only the owner can change products.")
-        values, errors = catalog.read_product_form(request.form, categories, with_stock=True)
-        if "stock_pieces" not in errors and values["stock_pieces"] < item.reserved_pieces:
-            # The database would refuse it too (a CHECK): held pieces are on the shelf.
-            errors["stock_pieces"] = (f"{item.reserved_pieces:,} pieces are held for orders, "
-                                      f"so there are at least {item.reserved_pieces:,} on the shelf.")
+        # Stock isn't on this form: it changes with Restock and Count, which keep its history.
+        values, errors = catalog.read_product_form(request.form, categories, with_stock=False)
         if request.form.get("version") != str(item.version):
             # The form was opened before someone else's save.
             flash(CONFLICT, "error")
@@ -109,12 +108,101 @@ def product(product_id):
             flash(f"{item.name} is saved.")
             return to_product(item)
     return render_template("manage/product.html", product=item, categories=categories,
-                           values=values or item_values(item), errors=errors), 400 if errors else 200
+                           values=values or item_values(item), errors=errors,
+                           moves=stock.history(s, g.store, product_id=item.id, limit=8)), 400 if errors else 200
 
 
 def item_values(item):
     return {"name": item.name, "description": item.description, "category_id": item.category_id,
-            "low_stock_pieces": item.low_stock_pieces, "is_active": item.is_active, "stock_pieces": item.stock_pieces}
+            "low_stock_pieces": item.low_stock_pieces, "is_active": item.is_active}
+
+
+# ---------- Stock ----------
+
+@bp.post("/products/<int:product_id>/restock")
+@needs(MANAGE_STOCK, "Only a cashier or the owner can change stock.")
+def restock(product_id):
+    s = db.session()
+    item = get_product(product_id)
+    pieces, problem = forms.whole_number(request.form, "pieces", 1, stock.MAX_PIECES)
+    note, _ = forms.text(request.form, "note", 200)
+    if problem:
+        flash(problem, "error")
+        return to_product(item, "stock")
+    move = stock.restock(s, item, pieces, g.user, utcnow(), note)
+    s.commit()
+    flash(f"Added {pieces:,} pieces of {item.name}. There are {move.stock_after:,} now.")
+    return to_product(item, "stock")
+
+
+@bp.post("/products/<int:product_id>/count")
+@needs(MANAGE_STOCK, "Only a cashier or the owner can change stock.")
+def count(product_id):
+    s = db.session()
+    item = get_product(product_id)
+    counted, problem = forms.whole_number(request.form, "counted", 0, stock.MAX_PIECES)
+    seen = request.form.get("seen", type=int)
+    note, _ = forms.text(request.form, "note", 200)
+    if problem or seen is None:
+        flash(problem or "Please count again.", "error")
+        return to_product(item, "stock")
+    try:
+        move = stock.count(s, item, counted, seen, g.user, utcnow(), note)
+        s.commit()
+    except stock.StockProblem as trouble:
+        s.rollback()
+        flash(str(trouble), "error")
+        return to_product(item, "stock")
+    if move is None:
+        flash(f"The count matches: {counted:,} pieces of {item.name}.")
+    else:
+        flash(f"{item.name} is now {counted:,} pieces ({move.change:+,} from the count).")
+    return to_product(item, "stock")
+
+
+@bp.get("/stock")
+@needs(SEE_PRODUCTS)
+def stock_history():
+    s = db.session()
+    reason = request.args.get("reason") if request.args.get("reason") in MOVE_REASONS else None
+    return render_template("manage/stock.html", moves=stock.history(s, g.store, reason=reason), reason=reason,
+                           reasons=MOVE_REASONS)
+
+
+# ---------- Adding many products from a CSV file ----------
+
+@bp.route("/products/import", methods=["GET", "POST"])
+@needs(IMPORT_PRODUCTS, "Only the owner can import products.")
+def import_products():
+    s = db.session()
+    if request.method == "GET":
+        return render_template("manage/import.html", plan=None, errors=[], text="")
+    upload = request.files.get("file")
+    try:
+        text = importer.decode(upload.read()) if upload and upload.filename else request.form.get("text", "")
+        if len(text) > importer.MAX_BYTES:
+            raise importer.ImportProblem("That file is too big. Split it into files under 500 KB.")
+        plan, errors = importer.read(s, g.store, text)
+    except importer.ImportProblem as problem:
+        flash(str(problem), "error")
+        return redirect(url_for("manage.import_products"))
+    if request.form.get("confirm") == "1":
+        if errors:
+            flash("Fix the rows marked in red first, then upload the file again.", "error")
+        else:
+            not_for_demo("The demo can't import files. Everything else on this page works.")
+            made, updated = importer.apply(s, g.store, plan, g.user, utcnow())
+            s.commit()
+            flash(f"Imported: {made} new products and {updated} updated.")
+            return redirect(url_for("manage.products"))
+    return render_template("manage/import.html", plan=plan, errors=errors, text=text), 400 if errors else 200
+
+
+@bp.get("/products/import/template.csv")
+@needs(IMPORT_PRODUCTS)
+def import_template():
+    return importer.TEMPLATE, 200, {"Content-Type": "text/csv; charset=utf-8",
+                                    "Content-Disposition": "attachment; filename=dfjc-products.csv"}
 
 
 @bp.post("/products/<int:product_id>/units")

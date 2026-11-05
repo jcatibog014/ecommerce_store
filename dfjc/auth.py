@@ -25,7 +25,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import db, mailer, permissions, stores
 from .dates import utcnow
-from .models import CASHIER, OWNER, SHOPPER, PaymentEvent, Store, User
+from .models import CASHIER, OWNER, RIDER, SHOPPER, PaymentEvent, Store, User
 
 bp = Blueprint("auth", __name__)
 
@@ -161,8 +161,11 @@ def check_login(s, store, email, password, moment):
 
 def home_for(user):
     """Where someone lands after logging in: staff at their work, shoppers at the shop."""
-    if user is not None and permissions.role_of(user) in (OWNER, CASHIER):
+    role = permissions.role_of(user) if user is not None else None
+    if role in (OWNER, CASHIER):
         return url_for("staff_orders.index")
+    if role == RIDER:
+        return url_for("fulfil.deliveries")
     return url_for("shop.home")
 
 

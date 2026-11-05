@@ -25,7 +25,7 @@
       <input type="hidden" name="version" value="{{ product.version }}">
       <fieldset class="stack plain-fieldset" {{ locked }}>
         <h2>Details</h2>
-        {{ product_fields(values, errors, categories) }}
+        {{ product_fields(values, errors, categories, with_stock=False) }}
         <div class="form-actions"><button class="button" type="submit">Save details</button></div>
       </fieldset>
     </form>
@@ -51,6 +51,50 @@
       </fieldset>
     </section>
   </div>
+
+  {% set stock_locked = '' if can(MANAGE_STOCK) else 'disabled' %}
+  <section class="card" id="stock">
+    <div class="card-head">
+      <h2>Stock</h2>
+      <a href="{{ url_for('manage.stock_history') }}">All stock history</a>
+    </div>
+    <div class="stock-row">
+      <p class="stock-figure"><strong>{{ '{:,}'.format(product.stock_pieces) }}</strong> pieces on the shelf
+        {% if product.reserved_pieces %}<span class="row-sub">{{ '{:,}'.format(product.reserved_pieces) }} of them held for orders, so {{ '{:,}'.format(product.available_pieces) }} can be sold</span>{% endif %}</p>
+      <fieldset class="plain-fieldset stock-forms" {{ stock_locked }}>
+        <form method="post" action="{{ url_for('manage.restock', product_id=product.id) }}" class="inline-fields">
+          {{ csrf() }}
+          {{ field('pieces', 'Add pieces', attrs='inputmode="numeric" required placeholder="48"') }}
+          {{ field('note', 'From', attrs='maxlength="200" placeholder="Supplier, receipt no."') }}
+          <button class="button button-quiet" type="submit">Restock</button>
+        </form>
+        <form method="post" action="{{ url_for('manage.count', product_id=product.id) }}" class="inline-fields">
+          {{ csrf() }}
+          {# The stock shown now: if it changes before you save (a sale), the count is refused. #}
+          <input type="hidden" name="seen" value="{{ product.stock_pieces }}">
+          {{ field('counted', 'Counted on the shelf', attrs='inputmode="numeric" required') }}
+          {{ field('note', 'Note', attrs='maxlength="200" placeholder="Monthly count"') }}
+          <button class="button button-quiet" type="submit">Save count</button>
+        </form>
+      </fieldset>
+    </div>
+    {% if moves %}
+      <table class="lines-table moves-table">
+        <thead><tr><th scope="col">When</th><th scope="col">Why</th><th scope="col" class="num">Change</th><th scope="col" class="num">After</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          {% for move in moves %}
+            <tr>
+              <td>{{ move.created_at|nice_datetime }}</td>
+              <td>{{ MOVE_REASONS[move.reason] }}{% if move.note %}<span class="row-sub">{{ move.note }}</span>{% endif %}</td>
+              <td class="num {{ 'change-up' if move.change > 0 else 'change-down' }}">{{ '{:+,}'.format(move.change) }}</td>
+              <td class="num">{{ '{:,}'.format(move.stock_after) }}</td>
+              <td>{{ move.by.first_name if move.by else '' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
 
   <section class="card" id="units">
     <div class="card-head">

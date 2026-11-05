@@ -10,6 +10,8 @@
                         ├─< order_events (the timeline: every status change, who and when)
                         └─< payments ──< refunds
     payment_events (every webhook PayMongo sent us, each event id once)
+    stores ─┬─< stock_moves (every change to a product's stock: why, how many, who)
+            └─< remittances (cash a rider hands to the cashier) ──< payments (cash on delivery)
 
     users ─┬─< cart_items ──> product_units
            ├─< addresses ──> delivery_areas
@@ -385,6 +387,8 @@ class Order(Base):
     placed_at: Mapped[datetime] = mapped_column(default=utcnow)
     priced_at: Mapped[datetime | None]
     priced_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # Delivery orders: the rider taking it (stage 4).
+    rider_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     lines: Mapped[list["OrderLine"]] = relationship(back_populates="order", order_by="OrderLine.id",
@@ -392,6 +396,7 @@ class Order(Base):
     events: Mapped[list["OrderEvent"]] = relationship(back_populates="order", order_by="OrderEvent.id",
                                                       cascade="all, delete-orphan", passive_deletes=True)
     priced_by: Mapped[User | None] = relationship(foreign_keys=[priced_by_id])
+    rider: Mapped[User | None] = relationship(foreign_keys=[rider_id])
     payments: Mapped[list["Payment"]] = relationship(back_populates="order", order_by="Payment.id",
                                                      cascade="all, delete-orphan", passive_deletes=True)
 
@@ -487,11 +492,16 @@ class Payment(Base):
     refunded_amount: Mapped[int] = mapped_column(default=0)
     # Paid for an order that was cancelled in the meantime (or paid twice): staff refund it.
     needs_refund: Mapped[bool] = mapped_column(default=False)
+    # Cash: who took it (the cashier at pickup, the rider on delivery), and the hand-over
+    # that brought a rider's cash to the counter.
+    collected_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    remittance_id: Mapped[int | None] = mapped_column(ForeignKey("remittances.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     expires_at: Mapped[datetime | None]
     paid_at: Mapped[datetime | None]
 
     order: Mapped[Order] = relationship(back_populates="payments")
+    collected_by: Mapped[User | None] = relationship(foreign_keys=[collected_by_id])
     refunds: Mapped[list["Refund"]] = relationship(back_populates="payment", order_by="Refund.id",
                                                    cascade="all, delete-orphan", passive_deletes=True)
 
@@ -526,3 +536,52 @@ class PaymentEvent(Base):
     session_id: Mapped[str] = mapped_column(String(80), default="", index=True)
     result: Mapped[str] = mapped_column(String(40), default="")  # what we did with it
     received_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+# ---------- Stage 4: stock history and cash from riders ----------
+
+# Why stock changed (stock.py).
+MOVE_ORDER = "order"          # packed for an online order
+MOVE_RESTOCK = "restock"      # a delivery from the supplier
+MOVE_COUNT = "count"          # counted on the shelf; the difference
+MOVE_IMPORT = "import"        # the starting stock from a CSV file
+MOVE_START = "start"          # the starting stock of a new product
+MOVE_WALKIN = "walkin"        # sold at the counter (stage 5)
+MOVE_REASONS = {MOVE_ORDER: "Online order", MOVE_RESTOCK: "Restock", MOVE_COUNT: "Stock count",
+                MOVE_IMPORT: "CSV import", MOVE_START: "Starting stock", MOVE_WALKIN: "Counter sale"}
+
+
+class StockMove(Base):
+    __tablename__ = "stock_moves"
+    __table_args__ = (Index("ix_stock_moves_store_created", "store_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"))
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    change: Mapped[int]  # pieces: + more on the shelf, - fewer
+    stock_after: Mapped[int]
+    reason: Mapped[str] = mapped_column(String(20))
+    note: Mapped[str] = mapped_column(String(200), default="")
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="SET NULL"))
+    by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    product: Mapped[Product | None] = relationship()
+    order: Mapped[Order | None] = relationship()
+    by: Mapped[User | None] = relationship()
+
+
+class Remittance(Base):
+    """A rider hands their cash-on-delivery money to the cashier."""
+    __tablename__ = "remittances"
+    __table_args__ = (CheckConstraint("amount > 0", name="amount_positive"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    rider_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    received_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    amount: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    rider: Mapped[User | None] = relationship(foreign_keys=[rider_id])
+    received_by: Mapped[User | None] = relationship(foreign_keys=[received_by_id])

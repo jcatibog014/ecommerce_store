@@ -22,13 +22,22 @@
         <p class="nav-heading">Sell</p>
         <ul class="nav-links">
           {{ link('staff_orders.index', 'Orders', endpoint.startswith('staff_orders.'), to_price_count) }}
+          {% if can(PACK_ORDERS) %}{{ link('fulfil.board', 'Packing', endpoint == 'fulfil.board', to_pack_count) }}{% endif %}
+          {{ link('fulfil.deliveries', 'Deliveries', endpoint == 'fulfil.deliveries', out_count) }}
+          {% if can(RECEIVE_CASH) %}{{ link('fulfil.rider_cash', 'Rider Cash', endpoint == 'fulfil.rider_cash') }}{% endif %}
+        </ul>
+      {% elif can(SEE_DELIVERIES) %}
+        <p class="nav-heading">Deliver</p>
+        <ul class="nav-links">
+          {{ link('fulfil.deliveries', 'My Deliveries', endpoint == 'fulfil.deliveries', out_count) }}
         </ul>
       {% endif %}
       {% if can(SEE_PRODUCTS) %}
         <p class="nav-heading">Catalog</p>
         <ul class="nav-links">
-          {{ link('manage.products', 'Products', endpoint.startswith('manage.') and 'categor' not in endpoint) }}
+          {{ link('manage.products', 'Products', endpoint.startswith('manage.') and 'categor' not in endpoint and endpoint != 'manage.stock_history') }}
           {{ link('manage.categories', 'Categories', 'categor' in endpoint) }}
+          {{ link('manage.stock_history', 'Stock History', endpoint == 'manage.stock_history') }}
         </ul>
       {% endif %}
       {% if can(MANAGE_STAFF) or can(MANAGE_STORE) %}

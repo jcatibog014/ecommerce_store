@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Import Products - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('manage.products') }}">&larr; Products</a>
+  <div class="page-head">
+    <h1>Import Products</h1>
+    <p class="page-sub">Add many products at once from a spreadsheet. First you see what will change; nothing is saved until you press Import.</p>
+  </div>
+
+  {% if not plan %}
+    <div class="grid-2">
+      <form method="post" enctype="multipart/form-data" class="card stack">
+        {{ csrf() }}
+        <h2>Choose a File</h2>
+        <label class="field">
+          <span class="field-label">CSV file <span class="hint">In Excel: File, Save As, CSV UTF-8</span></span>
+          <input type="file" name="file" accept=".csv,text/csv" required>
+        </label>
+        <div class="form-actions"><button class="button" type="submit">Check the file</button></div>
+      </form>
+      <section class="card">
+        <h2>How the File Looks</h2>
+        <p class="card-note">One row for each unit. Rows with the same name are one product. Prices are in pesos.</p>
+        <pre class="csv-sample">name,category,unit,pieces,retail,wholesale,stock
+Soy sauce 1 L,Condiments,Bottle,1,48,45,48
+Soy sauce 1 L,Condiments,Case of 12,12,560,530,</pre>
+        <p class="card-note">New products get the stock from their first row. Products you already have keep their stock; only their prices change.</p>
+        <a class="button button-quiet" href="{{ url_for('manage.import_template') }}">Download an example file</a>
+      </section>
+    </div>
+  {% else %}
+    {% if errors %}
+      <div class="callout callout-stop">
+        <h2>{{ errors|length }} {{ 'Row Needs' if errors|length == 1 else 'Rows Need' }} Fixing</h2>
+        <p>Nothing was imported. Fix these rows in the spreadsheet, save it again and upload it.</p>
+        <ul class="import-errors">
+          {% for number, name, problem in errors %}<li><strong>Row {{ number }}</strong> ({{ name }}): {{ problem }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <section class="card">
+      <h2>What Will Change</h2>
+      <table class="lines-table">
+        <thead><tr><th scope="col">Product</th><th scope="col">Category</th><th scope="col">Units and retail prices</th><th scope="col" class="num">Stock</th></tr></thead>
+        <tbody>
+          {% for item in plan %}
+            <tr>
+              <th scope="row">{{ item.name }}<span class="row-sub">{{ 'Already in the store: prices updated' if item.existing else 'New' }}</span></th>
+              <td>{{ item.category or 'No category' }}</td>
+              <td><ul class="unit-list">{% for unit in item.units %}<li>{{ unit.name }} <strong>{{ unit.retail_price|peso }}</strong></li>{% endfor %}</ul></td>
+              <td class="num">{{ 'kept' if item.existing else '{:,}'.format(item.stock) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <form method="post" class="form-actions">
+        {{ csrf() }}
+        <textarea name="text" hidden>{{ text }}</textarea>
+        <input type="hidden" name="confirm" value="1">
+        <a class="button button-quiet" href="{{ url_for('manage.import_products') }}">Choose another file</a>
+        <button class="button" type="submit"{% if errors %} disabled{% endif %}>Import {{ plan|length }} {{ 'product' if plan|length == 1 else 'products' }}</button>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

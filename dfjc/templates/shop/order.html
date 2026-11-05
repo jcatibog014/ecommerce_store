@@ -63,6 +63,27 @@
       {% set paid = order.paid_payment %}
       <p>Thank you! You paid {% if paid %}with {{ PAID_WITH_LABELS.get(paid.paid_with, 'online') }} on {{ paid.paid_at|nice_datetime }}{% else %}online{% endif %}. We'll tell you when it's {{ 'ready' if order.fulfilment == 'pickup' else 'on the way' }}.</p>
     </div>
+  {% elif order.status in ('packing', 'ready', 'out_for_delivery') %}
+    <div class="callout callout-good">
+      {% if order.status == 'packing' %}
+        <h2>We're Packing Your Order</h2>
+        <p>We'll tell you when it's {{ 'ready for pickup' if order.fulfilment == 'pickup' else 'on the way' }}.</p>
+      {% elif order.status == 'ready' and order.fulfilment == 'pickup' %}
+        <h2>Ready for Pickup</h2>
+        <p>Come to the counter and say your order number, {{ order.ref }}.{% if order.payment_method == 'cash_pickup' %} Please bring {{ order.total|peso }}.{% endif %}</p>
+      {% elif order.status == 'ready' %}
+        <h2>Packed and Ready to Go</h2>
+        <p>A rider takes it out soon.</p>
+      {% else %}
+        <h2>On the Way</h2>
+        <p>{{ order.rider.first_name if order.rider else 'Our rider' }} is bringing it now.{% if order.payment_method == 'cod' %} Please have {{ order.total|peso }} ready.{% endif %}</p>
+      {% endif %}
+    </div>
+  {% elif order.status in ('picked_up', 'delivered') %}
+    <div class="callout callout-good">
+      <h2>{{ 'Picked Up' if order.status == 'picked_up' else 'Delivered' }} {{ order.updated_at|nice_date }}</h2>
+      <p>Thank you for shopping at {{ g.store.name }}!</p>
+    </div>
   {% elif order.status == 'refunded' %}
     <div class="callout callout-stop">
       <h2>Cancelled and Refunded</h2>

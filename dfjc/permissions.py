@@ -4,7 +4,7 @@
 |---------|----------------------------------------------------------------------|
 | Owner   | everything: products, prices, staff, store details                   |
 | Cashier | see products and stock; price orders (retail or wholesale), cancel   |
-| Rider   | deliveries (from stage 4)                                            |
+| Rider   | My Deliveries: delivered or nobody home, cash on delivery            |
 | Shopper | browse, cart, checkout, order history                                |
 
 In the demo one person plays every role: View As (session["view_as"])
@@ -27,6 +27,11 @@ MANAGE_STORE = (OWNER,)  # store details and delivery areas
 SHOP = (SHOPPER,)  # a cart, checkout and order history (staff sell at the counter instead)
 SEE_ORDERS = (OWNER, CASHIER)
 PRICE_ORDERS = (OWNER, CASHIER)  # choose retail or wholesale, and cancel
+PACK_ORDERS = (OWNER, CASHIER)  # packing, pickup, sending out with a rider
+SEE_DELIVERIES = (OWNER, CASHIER, RIDER)  # a rider sees and finishes only their own
+RECEIVE_CASH = (OWNER, CASHIER)  # the rider's cash-on-delivery money
+MANAGE_STOCK = (OWNER, CASHIER)  # restock and stock counts
+IMPORT_PRODUCTS = (OWNER,)
 
 
 def role_of(user):
@@ -63,4 +68,5 @@ def init_app(app):
     app.jinja_env.globals.update(
         can=can, is_staff=is_staff, MANAGE_PRODUCTS=MANAGE_PRODUCTS, SEE_PRODUCTS=SEE_PRODUCTS,
         MANAGE_STAFF=MANAGE_STAFF, MANAGE_STORE=MANAGE_STORE, SHOP=SHOP, SEE_ORDERS=SEE_ORDERS,
-        PRICE_ORDERS=PRICE_ORDERS, VIEW_AS_ROLES=VIEW_AS_ROLES, ROLES=ROLES)
+        PRICE_ORDERS=PRICE_ORDERS, PACK_ORDERS=PACK_ORDERS, SEE_DELIVERIES=SEE_DELIVERIES, RECEIVE_CASH=RECEIVE_CASH,
+        MANAGE_STOCK=MANAGE_STOCK, IMPORT_PRODUCTS=IMPORT_PRODUCTS, VIEW_AS_ROLES=VIEW_AS_ROLES, ROLES=ROLES)

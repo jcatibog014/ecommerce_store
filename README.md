@@ -25,6 +25,10 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 **The cashier:**
 
 - Sees new orders in **Orders**, with a number in the menu.
+- Moves orders along on the **Packing** board: To Pack, Packing, Ready, Out for Delivery. Starting to pack takes the items off the shelf.
+- Hands over pickup orders (and takes the cash), or sends delivery orders out with a rider.
+- Receives the cash riders collected (**Rider Cash**).
+- Adds new stock (**Restock**) and saves a **stock count**. Every change is in the **Stock History**.
 - Chooses **Retail** or **Wholesale** for each line (or for all lines at once). The total changes as you click.
 - Confirms the price. Then the shopper sees the final total.
 - Cancels an order with a reason. The items go back on sale.
@@ -39,9 +43,16 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 - Invite a cashier or a rider with a one-time link.
 - Change the store's name, address, phone and opening hours.
 - Choose the barangays for delivery, and the fee for each.
+- Add many products at once from a spreadsheet (**Import from a file**). You see what will change first, and either every row is saved or none.
 - Do everything the cashier does.
 
-**The cashier** can also see all products, stock and wholesale prices, but can't change them.
+**The cashier** can also see all products, stock and wholesale prices, but can't change the products or prices.
+
+**The rider:**
+
+- Sees the deliveries with them in **My Deliveries**: the address, the phone number and how much cash to collect.
+- Presses **Delivered**, or **Nobody home** to bring the order back.
+- Sees how much cash they have to hand to the cashier.
 
 ## How an order works
 
@@ -49,6 +60,8 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 2. The order waits for the cashier. The shopper sees an **estimated** total at retail price.
 3. The cashier chooses retail or wholesale for each line and confirms. The shopper sees the **final** total.
 4. The shopper pays: in cash at pickup or on delivery, or online right away on PayMongo's page.
+5. The cashier packs the order. Pickup orders wait at the counter; delivery orders go out with a rider.
+6. The shopper picks it up, or the rider delivers it. Cash is recorded with the person who took it.
 
 If two shoppers try to buy the last pieces at the same moment, only one gets them. The other sees how many are left. If someone presses "Place order" twice, there is still only one order.
 
@@ -107,6 +120,15 @@ Without the keys, your own computer uses the practice page, and the live site on
 | Cashier: waiting for payment | ![Orders waiting for payment](docs/screenshots/orders-waiting.png) |
 | Cashier: a paid order | ![Payments and Cancel and Refund](docs/screenshots/staff-paid-order.png) |
 | Cashier: a refunded order | ![A refunded order](docs/screenshots/staff-refunded-order.png) |
+| Cashier: the packing board | ![To Pack, Packing, Ready, Out for Delivery](docs/screenshots/packing.png) |
+| Cashier: the packing board (dark mode) | ![The packing board in dark mode](docs/screenshots/packing-dark.png) |
+| Rider: my deliveries | ![Deliveries with the rider](docs/screenshots/deliveries.png) |
+| Rider: on a phone | ![My deliveries on a phone](docs/screenshots/phone-deliveries.png) |
+| Cashier: rider cash | ![Cash from the rider](docs/screenshots/rider-cash.png) |
+| Cashier: restock and count | ![The stock of one product](docs/screenshots/product-stock.png) |
+| Stock history | ![Every change to stock](docs/screenshots/stock-history.png) |
+| Owner: import products | ![Import from a CSV file](docs/screenshots/import.png) |
+| A delivered order | ![A delivered order](docs/screenshots/order-on-the-way.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
 

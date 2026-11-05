@@ -98,7 +98,8 @@ def test_the_owner_edits_a_product(app, owner, store_id):
         "low_stock_pieces": "6", "version": "1"})
     assert response.status_code == 302
     product = get(app, Product, product_id)
-    assert (product.name, product.stock_pieces, product.is_active, product.version) == ("Bath soap 90 g", 60, False, 2)
+    # Stock is not on this form any more (Restock and Count keep its history), so it stays 100.
+    assert (product.name, product.stock_pieces, product.is_active, product.version) == ("Bath soap 90 g", 100, False, 2)
 
 
 def test_a_save_from_an_old_form_is_refused(app, owner, store_id):

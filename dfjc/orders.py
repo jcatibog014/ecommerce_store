@@ -11,8 +11,8 @@ read>), and writes the timeline. If someone else changed the order first, the
 UPDATE finds no row and OrderChanged is raised, so nothing is overwritten.
 
 Stock: placing an order HOLDS its pieces (products.reserved_pieces, see
-checkout.py). Cancelling gives them back. Packing (stage 4) takes them
-out of stock for real.
+checkout.py). Cancelling gives them back. Packing takes them off the shelf
+for real (stock.take_for_order), in the same transaction as the move.
 """
 from collections import defaultdict
 
@@ -113,6 +113,9 @@ def move(s, order, to_status, by, moment, note="", **changes):
         set_committed_value(order, name, value)
     if to_status in (CANCELLED, REFUNDED) and from_status in HOLDS_STOCK:
         release_stock(s, order)
+    if to_status == PACKING and from_status in HOLDS_STOCK:
+        from . import stock  # (stock.py uses this module too)
+        stock.take_for_order(s, order, by, moment)
     s.add(OrderEvent(order_id=order.id, from_status=from_status, to_status=to_status,
                      by_id=by.id if by else None, note=note, created_at=moment))
     return order

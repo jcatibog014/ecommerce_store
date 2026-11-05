@@ -9,7 +9,9 @@ from sqlalchemy.orm import selectinload
 
 from .. import db, forms, gateways, orders, payments
 from ..dates import utcnow
-from ..models import AWAITING_PAYMENT, CANCELLED, CONFIRMED, PAID, PLACED, REFUNDED, WHOLESALE, Order
+from ..models import (
+    AWAITING_PAYMENT, CANCELLED, CONFIRMED, DELIVERED, PAID, PICKED_UP, PLACED, REFUNDED, RIDER, WHOLESALE, Order, User,
+)
 from ..permissions import PRICE_ORDERS, SEE_ORDERS, can, needs
 
 bp = Blueprint("staff_orders", __name__, url_prefix="/manage/orders")
@@ -19,6 +21,7 @@ TABS = {
     "to-price": ("To Price", (PLACED,), True),
     "waiting": ("Waiting for Payment", (AWAITING_PAYMENT,), True),
     "confirmed": ("Confirmed", (CONFIRMED, PAID), True),
+    "done": ("Done", (PICKED_UP, DELIVERED), False),
     "cancelled": ("Cancelled", (CANCELLED, REFUNDED), False),
     "all": ("All Orders", None, False),
 }
@@ -58,7 +61,9 @@ def index():
 @bp.get("/<ref>")
 @needs(SEE_ORDERS)
 def detail(ref):
-    return render_template("manage/order.html", order=store_order(ref))
+    riders = db.session().scalars(select(User).where(User.store_id == g.store.id, User.role == RIDER,
+                                                     User.is_active.is_(True)).order_by(User.name)).all()
+    return render_template("manage/order.html", order=store_order(ref), riders=riders)
 
 
 @bp.post("/<ref>/price")

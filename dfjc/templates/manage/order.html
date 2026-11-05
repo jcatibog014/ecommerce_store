@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, field, textarea, status_pill %}
 {% from "_order_parts.html" import order_steps, lines_table, sums, timeline %}
+{% from "manage/_step.html" import next_step %}
 {% block title %}Order {{ order.ref }} - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <a class="back-link" href="{{ url_for('staff_orders.index') }}">&larr; Orders</a>
@@ -64,6 +65,12 @@
     {% endif %}
 
     <div>
+      {% if order.status in ('confirmed', 'paid', 'packing', 'ready', 'out_for_delivery') and can(PACK_ORDERS) %}
+        <section class="card next-step">
+          <h2>Next Step</h2>
+          {{ next_step(order, riders, url_for('staff_orders.detail', ref=order.ref)) }}
+        </section>
+      {% endif %}
       <section class="card">
         <h2>Shopper</h2>
         <p><strong>{{ order.customer_name }}</strong><br>

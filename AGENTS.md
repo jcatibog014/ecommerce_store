@@ -4,7 +4,7 @@ This file guides AI coding agents (Claude Code, Codex, Cursor, Copilot and other
 
 ## Overview
 
-**DFJC Store**, the online shop and counter for a real wholesale and retail store (a big sari-sari store), in Python (Flask). The repo is `ecommerce_store` and the Python package is `dfjc`. Shoppers browse the catalog, and (from stage 2) order for pickup or delivery; the cashier decides the wholesale or retail price; staff work the counter. The plan, with the stages and their progress, is `docs/PLAN.md`. **One PR per stage**: stop for the owner's review after each.
+**DFJC Store**, the online shop and counter for a real wholesale and retail store (a big sari-sari store), in Python (Flask). The repo is `ecommerce_store` and the Python package is `dfjc`. Shoppers browse the catalog, and (from stage 2) order for pickup or delivery; the cashier decides the wholesale or retail price; staff work the counter. The plan, with the stages and their progress, is `docs/PLAN.md`. Stage 1 was its own PR; stages 2 to 8 went into one PR with a commit per stage (the owner's choice). Deploying: `render.yaml` and `docs/DEPLOY.md`.
 
 It is a learning project for **transactions, payment integration and order state**, so those parts stay easy to read: short comments that explain *why*, plain functions that the tests call directly, and no extra libraries unless the owner asks for them. Write the README in simple (A1-level) English.
 
@@ -14,7 +14,8 @@ Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the
 - First time: `.venv\Scripts\flask --app dfjc upgrade-db` (makes the tables), then `.venv\Scripts\flask --app dfjc create-owner` (makes the store and the owner's login).
 - Run: `.venv\Scripts\flask --app dfjc run --debug --port 5009`, then open http://127.0.0.1:5009. (Ports: Swap Meter 5000, Ambon Alert 5001, Ang Gastos! 5002, Sangkap 5003, Gawi 5004, Akda 5005, Hire Wire 5006, Plan-It 5007, ShiroMoto 5008.)
 - Test: `.venv\Scripts\python -m pytest`. Every test gets a fresh SQLite file and **never goes online**: an autouse fixture in `tests/conftest.py` makes any network connection fail. Set `TEST_DATABASE_URL` to an **empty** Neon branch to run the same tests on PostgreSQL (each test drops and remakes the tables). SQLAlchemy warnings fail the tests (`pytest.ini`).
-- Other commands: `set-password <email>`.
+- Other commands: `set-password <email>`, `send-emails` (the email outbox).
+- App icons: `docs/make_icons.py` (Playwright, borrowed like the screenshots).
 - Screenshots: `docs/take_screenshots.py` (Playwright + Edge, from Try Demo; its top comment has the steps). Playwright isn't in this `.venv`; the owner borrows `expense_tracker`'s.
 
 ## Architecture
@@ -38,7 +39,7 @@ Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the
 - **Phone app**: `static/site.webmanifest`, `/sw.js` (served from the root; caches only static files and `static/offline.html`, never pages), icons from `docs/make_icons.py`, and the Install button + iPhone steps in Settings.
 - **Photos** (`photos.py`) are checked with Pillow and kept in the database as two WebP copies (1000 px and 400 px), because Render forgets files. They are served from `/photos/<id>.webp` with a year-long cache (a new upload is a new id). The demo can't upload.
 - **Times:** moments are naive UTC (`dates.utcnow()`), shown on the store's clock (Asia/Manila) by the `formatting.py` filters.
-- **Demo:** **every page the demo can open must show an example**; `tests/test_demo.py` fails if one goes empty. Give every new feature sample data in `seed.py` in the same PR. All names are made up and no product is a real brand.
+- **Demo:** **every page the demo can open must show an example**; `tests/test_demo.py` and `tests/test_demo_sweep.py` (every page, every View As role, no empty state) fail if one goes empty. Give every new feature sample data in `seed.py` in the same PR. All names are made up and no product is a real brand.
 - **Migrations:** after changing `models.py`, run `upgrade-db`, then `.venv\Scripts\alembic revision --autogenerate --rev-id 00NN -m "what changed"` and check the file. A new NOT NULL column on an existing table needs a `server_default`. `db.upgrade_db()` turns SQLite foreign keys off while migrating so a table rebuild can't cascade-delete other tables. `tests/test_migrations.py` checks models and migrations agree.
 - The page's CSP allows no inline styles or scripts. Template helpers that macros use (`photo_url`, `cheapest`, `stock_word`, `can`) are Jinja **globals**, because imported macros don't see context processors.
 

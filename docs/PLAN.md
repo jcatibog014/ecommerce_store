@@ -19,7 +19,7 @@ The user wants a mini e-commerce store to practise **transactions, payment integ
 - [x] Stage 5: walk-in sales
 - [x] Stage 6: shopper extras and promos
 - [x] Stage 7: insights and phone app
-- [ ] Stage 8: demo, README and deploy
+- [x] Stage 8: demo, README and deploy (render.yaml, docs/DEPLOY.md). Going live is the owner's step.
 
 ## Setup
 - Repo: https://github.com/jcatibog014/ecommerce_store (made by the user). First step after approval: `git clone` it into a new folder `C:\Users\USER\Documents\Workspace\ecommerce_store`, make `.venv`, and branch `stage-1-setup`. Package `dfjc`, local port **5009** (ShiroMoto has 5008).

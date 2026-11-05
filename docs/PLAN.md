@@ -18,7 +18,7 @@ The user wants a mini e-commerce store to practise **transactions, payment integ
 - [x] Stage 4: fulfilment and store admin
 - [x] Stage 5: walk-in sales
 - [x] Stage 6: shopper extras and promos
-- [ ] Stage 7: insights and phone app
+- [x] Stage 7: insights and phone app
 - [ ] Stage 8: demo, README and deploy
 
 ## Setup

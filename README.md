@@ -51,6 +51,7 @@ Now shoppers can fill a cart and order for pickup or delivery. They pay in cash 
 - Change the store's name, address, phone and opening hours.
 - Choose the barangays for delivery, and the fee for each.
 - Make **Promos**: voucher codes with a minimum order, a number of uses, and start and end dates.
+- See **Insights** for the last 7, 30 or 90 days: sales per day (online and counter), the best sellers, how people paid, how much was sold at the wholesale price, and what is running low.
 - Add many products at once from a spreadsheet (**Import from a file**). You see what will change first, and either every row is saved or none.
 - Do everything the cashier does.
 
@@ -151,8 +152,15 @@ Without the keys, your own computer uses the practice page, and the live site on
 | Favorites | ![Saved products](docs/screenshots/favorites.png) |
 | Saved addresses | ![Delivery addresses](docs/screenshots/addresses.png) |
 | Owner: promos | ![Voucher codes and their uses](docs/screenshots/promos.png) |
+| Owner: insights | ![Sales per day, best sellers and payments](docs/screenshots/insights.png) |
+| Owner: insights (dark mode) | ![Insights in dark mode](docs/screenshots/insights-dark.png) |
+| Insights on a phone | ![Insights on a phone](docs/screenshots/phone-insights.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
+
+## Put it on your phone
+
+DFJC Store can be installed like an app. On Android, open **Settings** and press **Install app** (or use Chrome's menu). On an iPhone, open the site in Safari, press Share, then **Add to Home Screen**. Without internet, it shows a small "You're offline" page; prices and orders always come fresh from the store.
 
 ## Try the demo
 

@@ -53,6 +53,12 @@
   /* The login panel: dark wood, so white text and the yellow logo stand out. */
   --panel: #6b4220;
   --panel-ink: #ffffff;
+  /* Charts (Insights): two categorical series, checked with the dataviz validator on these
+     surfaces, and one single-series bar colour (bamboo). */
+  --series-online: #2a78d6;
+  --series-counter: #eb6834;
+  --chart-bar: #a67c52;
+  --chart-grid: #ece2d0;
   --control-height: 2.6rem;
   color-scheme: light;
 }
@@ -96,6 +102,10 @@
     --tile-3-bg: #1f3320; --tile-3-ink: #9fdc93;
     --tile-4-bg: #1c2a3a; --tile-4-ink: #9cc3ef;
     --tile-5-bg: #3a2614; --tile-5-ink: #f6b27a;
+    --series-online: #3987e5;
+    --series-counter: #d95926;
+    --chart-bar: #b08a55;
+    --chart-grid: #3a3027;
     --panel: #4a2e14;
     color-scheme: dark;
   }
@@ -139,6 +149,10 @@
   --tile-3-bg: #1f3320; --tile-3-ink: #9fdc93;
   --tile-4-bg: #1c2a3a; --tile-4-ink: #9cc3ef;
   --tile-5-bg: #3a2614; --tile-5-ink: #f6b27a;
+  --series-online: #3987e5;
+  --series-counter: #d95926;
+  --chart-bar: #b08a55;
+  --chart-grid: #3a3027;
   --panel: #4a2e14;
   color-scheme: dark;
 }
@@ -908,6 +922,46 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .address-card summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; list-style: none; cursor: pointer; }
 .address-card summary::-webkit-details-marker { display: none; }
 .address-card[open] summary { margin-bottom: 1rem; }
+
+/* ---------- Insights ---------- */
+
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(13rem, calc(50% - .5rem)), 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+@container main (max-width: 30rem) { .stat-tile { padding: .8rem .9rem; } .stat-number { font-size: 1.35rem; } }
+.stat-tile { padding: 1rem 1.2rem; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); }
+.stat-label { margin: 0 0 .2rem; color: var(--ink-soft); font-size: .88rem; font-weight: 600; }
+.stat-number { margin: 0; font-family: var(--headline); font-size: 1.75rem; font-weight: 800; line-height: 1.2; }
+.stat-inline { font-family: var(--ui); font-size: .95rem; font-weight: 400; color: var(--ink-soft); }
+.stat-note { margin: .25rem 0 0; color: var(--ink-soft); font-size: .85rem; }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin: 0; padding: 0; font-size: .9rem; color: var(--ink); }
+.legend li { display: inline-flex; align-items: center; gap: .45rem; }
+.swatch { width: .8rem; height: .8rem; border-radius: 3px; }
+.swatch-online { background: var(--series-online); }
+.swatch-counter { background: var(--series-counter); }
+.day-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.day-chart .grid-line { stroke: var(--chart-grid); stroke-width: 1; }
+.day-chart .base-line { stroke: var(--rule-strong); stroke-width: 1; }
+.day-chart .axis-text { fill: var(--ink-soft); font-family: var(--ui); font-size: 11px; }
+.day-chart .bar-online { fill: var(--series-online); }
+.day-chart .bar-counter { fill: var(--series-counter); }
+.day-chart .hit { fill: transparent; cursor: pointer; }
+.day-chart .hit:hover, .day-chart .hit:focus-visible { fill: var(--ink); fill-opacity: .06; outline: none; }
+.table-view { margin-top: .75rem; }
+.table-view summary { cursor: pointer; color: var(--link); font-size: .92rem; }
+.hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.hbars li { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) auto; gap: .75rem; align-items: center; }
+.hbar-label { min-width: 0; font-size: .92rem; }
+.hbar-track { display: block; }
+.hbar { display: block; width: 100%; height: .8rem; }
+.hbar rect, .meter rect { fill: var(--chart-bar); }
+.meter { display: block; margin: .6rem 0; }
+.meter svg { display: block; width: 100%; height: .8rem; }
+.meter .meter-track { fill: var(--chart-grid); }
+.hbar-value { font-weight: 600; font-size: .9rem; white-space: nowrap; }
+@container main (max-width: 34rem) { .hbars li { grid-template-columns: minmax(0, 1fr) auto; } .hbar-track { grid-column: 1 / -1; grid-row: 2; } }
+.low-list li { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid var(--rule); }
+.chart-tip { position: fixed; z-index: 40; padding: .5rem .7rem; border-radius: var(--radius-small); background: var(--ink); color: var(--bg); font-size: .85rem; line-height: 1.4; pointer-events: none; box-shadow: 0 .25rem 1rem rgb(0 0 0 / .2); }
+.chart-tip strong { display: block; }
+.install-steps { margin: 0; padding-left: 1.2rem; }
 
 /* Thin scrollbars in the theme's colours, wherever something scrolls. */
 * { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }

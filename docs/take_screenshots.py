@@ -75,6 +75,9 @@ PAGES = [
     ("favorites.png", "shopper", "/favorites", "light", DESKTOP),
     ("addresses.png", "shopper", "/addresses", "light", DESKTOP),
     ("promos.png", "owner", "/manage/promos", "light", DESKTOP),
+    ("insights.png", "owner", "/manage/insights?range=30", "light", DESKTOP),
+    ("insights-dark.png", "owner", "/manage/insights", "dark", DESKTOP),
+    ("phone-insights.png", "owner", "/manage/insights", "light", PHONE),
 ]
 
 

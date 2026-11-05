@@ -44,6 +44,7 @@
       {% if can(MANAGE_STAFF) or can(MANAGE_STORE) %}
         <p class="nav-heading">Store</p>
         <ul class="nav-links">
+          {% if can(SEE_INSIGHTS) %}{{ link('insights.index', 'Insights', endpoint == 'insights.index') }}{% endif %}
           {% if can(MANAGE_STAFF) %}{{ link('staff.index', 'Staff', endpoint == 'staff.index') }}{% endif %}
           {% if can(MANAGE_STORE) %}{{ link('staff.store', 'Store Details', endpoint == 'staff.store') }}
             {{ link('staff.areas', 'Delivery Areas', endpoint in ('staff.areas', 'staff.save_area')) }}

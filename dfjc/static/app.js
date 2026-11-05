@@ -270,7 +270,69 @@ function setUpPrint() {
   });
 }
 
+// Charts: a tooltip for each day's bar (mouse, finger or keyboard focus).
+function setUpChartTips() {
+  const tip = document.querySelector("[data-chart-tip]");
+  if (!tip) return;
+  const show = (target) => {
+    const [title, ...lines] = target.dataset.tip.split("|");
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    tip.replaceChildren(heading, ...lines.map((line) => {
+      const row = document.createElement("span");
+      row.textContent = line;
+      row.style.display = "block";
+      return row;
+    }));
+    tip.hidden = false;
+    const box = target.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, box.left + box.width / 2 - tip.offsetWidth / 2));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${Math.max(8, box.top - tip.offsetHeight - 8)}px`;
+  };
+  document.querySelectorAll("[data-tip]").forEach((target) => {
+    target.addEventListener("mouseenter", () => show(target));
+    target.addEventListener("focus", () => show(target));
+    target.addEventListener("mouseleave", () => { tip.hidden = true; });
+    target.addEventListener("blur", () => { tip.hidden = true; });
+  });
+}
+
+// The phone app: the service worker (/sw.js) makes the store installable. Browsers that can
+// install it fire "beforeinstallprompt"; then the Install button in Settings shows.
+function setUpInstall() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Without it the site still works; it just can't be installed.
+    });
+  }
+  const section = document.querySelector("[data-install]");
+  if (!section) return;
+  const button = section.querySelector("[data-install-button]");
+  const done = section.querySelector("[data-installed]");
+  if (window.matchMedia("(display-mode: standalone)").matches) {
+    done.hidden = false;
+    return;
+  }
+  let offer = null;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    offer = event;
+    button.hidden = false;
+  });
+  button.addEventListener("click", async () => {
+    if (!offer) return;
+    offer.prompt();
+    await offer.userChoice;
+    offer = null;
+    button.hidden = true;
+  });
+  window.addEventListener("appinstalled", () => { button.hidden = true; done.hidden = false; });
+}
+
 setUpTheme();
+setUpChartTips();
+setUpInstall();
 setUpChange();
 setUpPrint();
 setUpCheckout();

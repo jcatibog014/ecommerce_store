@@ -66,6 +66,8 @@ PAIRS = [
     ("--sign-ink", "--sign", 4.5), ("--panel-ink", "--panel", 4.5), ("--control-border", "--surface", 3),
     ("--tile-0-ink", "--tile-0-bg", 4.5), ("--tile-1-ink", "--tile-1-bg", 4.5), ("--tile-2-ink", "--tile-2-bg", 4.5),
     ("--tile-3-ink", "--tile-3-bg", 4.5), ("--tile-4-ink", "--tile-4-bg", 4.5), ("--tile-5-ink", "--tile-5-bg", 4.5),
+    # Chart marks (Insights): 3:1 against the card. The two series also passed the dataviz validator.
+    ("--series-online", "--surface", 3), ("--series-counter", "--surface", 3), ("--chart-bar", "--surface", 3),
 ]
 
 

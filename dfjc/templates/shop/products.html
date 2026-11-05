@@ -5,6 +5,18 @@
 {% block content %}
   <div class="page-head">
     <h1>{{ chosen.name if chosen else 'All Products' }}</h1>
+    <form class="catalog-tools" method="get">
+      {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
+      {# The search box is in the header; sorting keeps the words searched for. #}
+      {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+      <label class="catalog-sort">
+        <span class="sort-label">Sort by</span>
+        <select name="sort" data-auto-submit>
+          {% for value, label in sorts.items() %}<option value="{{ value }}"{% if filters.sort == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="button button-quiet" type="submit" data-auto-submit-button>Show</button>
+    </form>
     <p class="page-sub">{% if filters.q %}{{ total }} {{ 'result' if total == 1 else 'results' }} for "{{ filters.q }}"{% else %}{{ total }} {{ 'product' if total == 1 else 'products' }}{% endif %}</p>
   </div>
 
@@ -21,19 +33,6 @@
     </nav>
 
     <div class="catalog-main">
-      <form class="catalog-tools" method="get" data-filters>
-        {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
-        {# The search box is in the header; sorting keeps the words searched for. #}
-        {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
-        <label class="field catalog-sort">
-          <span class="field-label">Sort by</span>
-          <select name="sort">
-            {% for value, label in sorts.items() %}<option value="{{ value }}"{% if filters.sort == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
-          </select>
-        </label>
-        <button class="button button-quiet" type="submit">Show</button>
-      </form>
-
       {% if products %}
         <div class="product-grid">
           {% for product in products %}{{ product_card(product) }}{% endfor %}

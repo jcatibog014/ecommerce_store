@@ -1,11 +1,17 @@
-{% from "_macros.html" import product_picture, stock_pill %}
-{# One product in a grid: picture, name, the cheapest way to buy it, and its stock. #}
+{% from "_macros.html" import stock_pill %}
+{# One product in a grid: the name, the cheapest way to buy it, and its stock.
+   A picture only when the product has a real photo; otherwise a compact card with
+   a thin strip in its category's colour (no stand-in drawing taking up space). #}
 {% macro product_card(product) %}
   {% set unit = cheapest(product) %}
   {% set others = product.active_units|length - 1 %}
-  <article class="product-card">
-    <div class="product-card-picture">{{ product_picture(product) }}</div>
+  {% set photo = photo_url(product) %}
+  <article class="product-card{% if not photo %} no-photo tile-strip-{{ (product.category_id or 0) % 6 }}{% endif %}">
+    {% if photo %}
+      <div class="product-card-picture"><img class="product-photo" src="{{ photo }}" alt="" loading="lazy" width="400" height="400"></div>
+    {% endif %}
     <div class="product-card-body">
+      {% if product.category %}<p class="product-card-category">{{ product.category.name }}</p>{% endif %}
       <h3><a class="card-link" href="{{ url_for('shop.product', product_id=product.id) }}">{{ product.name }}</a></h3>
       <p class="product-price"><span class="price">{{ unit.retail_price|peso }}</span> <span class="per">/ {{ unit.name|lower }}</span></p>
       <p class="product-card-foot">

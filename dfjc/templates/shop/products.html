@@ -35,7 +35,7 @@
     <div class="catalog-main">
       {% if products %}
         <div class="product-grid">
-          {% for product in products %}{{ product_card(product) }}{% endfor %}
+          {% for group in products %}{{ product_card(group) }}{% endfor %}
         </div>
         {% if pages > 1 %}
           <nav class="pager" aria-label="Pages">

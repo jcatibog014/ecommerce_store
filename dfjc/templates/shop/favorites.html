@@ -7,9 +7,9 @@
     <h1>Favorites</h1>
     <p class="page-sub">The things you buy often. Press "Save to favorites" on a product to add it here.</p>
   </div>
-  {% if products %}
+  {% if groups %}
     <div class="product-grid">
-      {% for product in products %}{{ product_card(product) }}{% endfor %}
+      {% for group in groups %}{{ product_card(group) }}{% endfor %}
     </div>
   {% else %}
     {{ empty('No Favorites Yet', 'Open a product and press "Save to favorites", so you find it quickly next time.', url_for('shop.products'), 'Shop all products') }}

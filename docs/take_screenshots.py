@@ -33,6 +33,10 @@ PAGES = [
     ("products.png", "shopper", "/products", "light", DESKTOP),
     ("search.png", "shopper", "/products?q=noodles&sort=price-low", "light", DESKTOP),
     ("product.png", "shopper", "{water}", "light", DESKTOP),
+    ("product-kinds.png", "shopper", "{coffee}", "light", DESKTOP),
+    ("product-kinds-dark.png", "shopper", "{coffee}", "dark", DESKTOP),
+    ("phone-product-kinds.png", "shopper", "{coffee}", "light", PHONE),
+    ("add-kind.png", "owner", "{coffee-like}", "light", DESKTOP),
     ("phone.png", "shopper", "/", "light", PHONE),
     ("phone-products.png", "shopper", "/products", "light", PHONE),
     ("manage-products.png", "owner", "/manage/products", "light", DESKTOP),
@@ -122,6 +126,14 @@ def address(page, path):
         page.goto(f"{BASE}/manage/orders")
         row = page.locator("tr", has_text="Marites Santos").filter(has_text="Has bulk items")
         return row.locator(".row-link").first.get_attribute("href")
+    if path in ("{coffee}", "{coffee-like}"):
+        # The 3-in-1 coffee: two brands, four kinds. Open Creamy White, so both choices show.
+        page.goto(f"{BASE}/products?q=3-in-1")
+        page.goto(BASE + page.locator(".card-link", has_text="3-in-1 coffee sachet").get_attribute("href"))
+        link = page.locator(".option-chip", has_text="Creamy White").get_attribute("href")
+        if path == "{coffee}":
+            return link
+        return "/manage/products/new?like=" + link.rsplit("/", 1)[1]
     if path.startswith("{water"):
         name, _, anchor = path.partition("#")
         page.goto(f"{BASE}/products?q=bottled+water")
@@ -159,6 +171,17 @@ def shoot_counter(page):
     save(page, "receipt.png")
 
 
+def shoot_ask_for(page):
+    """The coffee page with "Not in the list? Ask for it" open and filled in."""
+    view_as(page, "shopper")
+    page.goto(f"{BASE}{address(page, '{coffee}')}")
+    page.locator(".ask-for summary").click()
+    page.locator('.ask-form input[name="wanted"]').fill("Nescafe Classic")
+    page.locator('.ask-form select[name="unit_name"]').select_option("Pack of 10")
+    page.locator('.ask-form input[name="quantity"]').fill("2")
+    save(page, "ask-for.png")
+
+
 def shoot_visitor_pages(browser):
     page = browser.new_page(viewport=DESKTOP, color_scheme="light")
     for name, path in (("login.png", "/login"), ("signup.png", "/signup")):
@@ -183,6 +206,7 @@ def main():
             save(page, name)
         shoot_sandbox(pages[("light", DESKTOP["width"])])
         shoot_counter(pages[("light", DESKTOP["width"])])
+        shoot_ask_for(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

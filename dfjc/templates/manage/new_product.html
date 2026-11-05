@@ -5,8 +5,10 @@
 {% block content %}
   <a class="back-link" href="{{ url_for('manage.products') }}">&larr; Products</a>
   <div class="page-head"><h1>New Product</h1></div>
+  {% if like %}<p class="note">A new kind, copied from another product: change the brand or kind, and the prices if they differ. Its other sizes are copied too.</p>{% endif %}
   <form method="post" class="narrow-form">
     {{ csrf() }}
+    {% if like %}<input type="hidden" name="like" value="{{ like }}">{% endif %}
     <section class="card stack">
       <h2>Details</h2>
       {{ product_fields(values, errors, categories) }}
@@ -18,7 +20,7 @@
         {{ field('unit_name', 'Unit name', unit.name, errors.unit_name, hint='Piece, Bottle, Kilo...', attrs='required maxlength="40"') }}
         {{ field('unit_pieces_per_unit', 'Pieces in it', unit.pieces_per_unit, errors.unit_pieces_per_unit, attrs='inputmode="numeric" required') }}
         {{ money_field('unit_retail_price', 'Retail price', unit.retail_price, errors.unit_retail_price, attrs='required') }}
-        {{ money_field('unit_wholesale_price', 'Wholesale price', unit.wholesale_price if errors else None, errors.unit_wholesale_price, hint='Empty = same as retail') }}
+        {{ money_field('unit_wholesale_price', 'Wholesale price', unit.wholesale_price if (errors or like) else None, errors.unit_wholesale_price, hint='Empty = same as retail') }}
         {{ field('unit_barcode', 'Barcode', unit.barcode, errors.unit_barcode, hint='Optional', attrs='maxlength="40" inputmode="numeric"') }}
       </div>
     </section>

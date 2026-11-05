@@ -58,7 +58,7 @@
         <a href="{{ url_for('shop.products', sort='new') }}">See all new items</a>
       </div>
       <div class="product-grid">
-        {% for product in newest %}{{ product_card(product) }}{% endfor %}
+        {% for group in newest %}{{ product_card(group) }}{% endfor %}
       </div>
     </section>
   {% else %}

@@ -51,8 +51,13 @@ def product(product_id):
         abort(404)
     from ..permissions import SHOP, can
     from .extras import favorite_ids
-    saved = g.user is not None and can(SHOP) and item.id in favorite_ids(db.session(), g.user)
-    return render_template("shop/product.html", product=item, saved=saved)
+    s = db.session()
+    saved = g.user is not None and can(SHOP) and item.id in favorite_ids(s, g.user)
+    # The other brands and kinds with the same title: the shopper picks one, which opens its page.
+    variants = catalog.siblings(s, g.store, item)
+    brands, kinds = catalog.choices(item, variants)
+    return render_template("shop/product.html", product=item, saved=saved, variants=variants, brands=brands,
+                           kinds=kinds)
 
 
 def photo_response(photo_id, field):

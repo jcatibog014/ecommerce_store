@@ -26,8 +26,8 @@ from sqlalchemy.orm import selectinload
 
 from . import forms, notices, vouchers
 from .models import (
-    CASH_PICKUP, COD, DELIVERY, ONLINE, PICKUP, PLACED, RETAIL, Address, CartItem, DeliveryArea, Order, OrderEvent, OrderLine,
-    Product, ProductUnit,
+    CASH_PICKUP, COD, DELIVERY, ONLINE, PICKUP, PLACED, REQUEST_PENDING, RETAIL, Address, CartItem, CartRequest,
+    DeliveryArea, Order, OrderEvent, OrderLine, Product, ProductUnit,
 )
 
 MAX_QUANTITY = 999
@@ -58,7 +58,28 @@ def cart_items(s, user):
 
 
 def cart_count(s, user):
-    return s.scalar(select(func.coalesce(func.sum(CartItem.quantity), 0)).where(CartItem.user_id == user.id))
+    items = s.scalar(select(func.coalesce(func.sum(CartItem.quantity), 0)).where(CartItem.user_id == user.id))
+    asked = s.scalar(select(func.coalesce(func.sum(CartRequest.quantity), 0)).where(CartRequest.user_id == user.id))
+    return items + asked
+
+
+# ---------- "Not in the list? Ask for it" ----------
+
+WANTED_MAX = 80
+
+
+def cart_requests(s, user):
+    return s.scalars(select(CartRequest).where(CartRequest.user_id == user.id)
+                     .order_by(CartRequest.added_at, CartRequest.id)
+                     .options(selectinload(CartRequest.product))).all()
+
+
+def ask_for(s, user, product, wanted, unit_name, quantity, moment):
+    """Put an asked-for item in the cart. The caller commits."""
+    request = CartRequest(user_id=user.id, product_id=product.id, wanted=wanted, unit_name=unit_name,
+                          quantity=min(MAX_QUANTITY, quantity), added_at=moment)
+    s.add(request)
+    return request
 
 
 def add_to_cart(s, user, unit, quantity, moment):
@@ -93,7 +114,7 @@ def cart_summary(items):
         if not problems[item.id] and by_product[product.id] > product.available_pieces:
             problems[item.id] = f"Together with your other {product.name} lines, that is more than we have."
     return {"subtotal": sum(item.line_total for item in items), "problems": problems,
-            "can_check_out": bool(items) and not any(problems.values())}
+            "can_check_out": not any(problems.values())}
 
 
 # ---------- Reading the checkout form ----------
@@ -179,7 +200,8 @@ def place_order(s, user, store, choice, key, moment):
     if existing is not None:
         return existing, False
     items = cart_items(s, user)
-    if not items:
+    requests = cart_requests(s, user)
+    if not items and not requests:
         raise CheckoutProblem("Your cart is empty.")
     pieces, names = defaultdict(int), {}
     for item in items:
@@ -188,7 +210,8 @@ def place_order(s, user, store, choice, key, moment):
             raise CheckoutProblem(f"{unit.product.name} ({unit.name}) isn't sold any more. Remove it from your cart.")
         pieces[unit.product_id] += item.pieces
         names[unit.product_id] = unit.product.name
-    hold_stock(s, store, pieces, names)
+    if pieces:
+        hold_stock(s, store, pieces, names)
 
     area = choice.get("area")
     order = Order(
@@ -205,6 +228,14 @@ def place_order(s, user, store, choice, key, moment):
             product_id=unit.product_id, unit_id=unit.id, product_name=unit.product.name, unit_name=unit.name,
             pieces_per_unit=unit.pieces_per_unit, quantity=item.quantity, pieces=item.pieces,
             retail_price=unit.retail_price, wholesale_price=unit.wholesale_price, price_type=RETAIL))
+    for request in requests:
+        if request.product.store_id != store.id:
+            continue
+        # No price and no stock: the cashier says if the store has it, and its price.
+        order.lines.append(OrderLine(
+            product_id=request.product_id, unit_id=None, product_name=request.name[:170],
+            unit_name=request.unit_name, pieces_per_unit=1, quantity=request.quantity, pieces=0,
+            retail_price=0, wholesale_price=0, price_type=RETAIL, is_request=True, request_status=REQUEST_PENDING))
     order.subtotal = sum(line.line_total for line in order.lines)
     voucher = choice.get("voucher")
     if voucher is not None:
@@ -220,6 +251,7 @@ def place_order(s, user, store, choice, key, moment):
     s.add(OrderEvent(order_id=order.id, from_status=None, to_status=PLACED, by_id=user.id, created_at=moment,
                      note=choice.get("note", "")))
     s.execute(delete(CartItem).where(CartItem.user_id == user.id))
+    s.execute(delete(CartRequest).where(CartRequest.user_id == user.id))
     notices.queue(s, order, PLACED, None, moment)
     return order, True
 

@@ -59,6 +59,15 @@ def new_product():
     s = db.session()
     categories = catalog.categories(s, g.store)
     values, unit, errors = {"is_active": True}, {"name": "Piece", "pieces_per_unit": 1}, {}
+    like = request.args.get("like", type=int)
+    if like and request.method == "GET":
+        # "Add another kind": start from that product (its name, brand, category and first unit).
+        source = get_product(like)
+        values = {**item_values(source), "kind": ""}
+        first = source.units[0] if source.units else None
+        if first:
+            unit = {"name": first.name, "pieces_per_unit": first.pieces_per_unit, "retail_price": first.retail_price,
+                    "wholesale_price": first.wholesale_price}
     if request.method == "POST":
         values, errors = catalog.read_product_form(request.form, categories, with_stock=True)
         unit, unit_errors = catalog.read_unit_form(request.form, prefix="unit_")
@@ -67,6 +76,15 @@ def new_product():
             moment = utcnow()
             product = Product(store_id=g.store.id, created_at=moment, updated_at=moment, **values)
             product.units.append(ProductUnit(**unit))
+            like_units = []
+            source_id = request.form.get("like", type=int)
+            if source_id:
+                # The other sizes (Pack, Case) of the product this one was copied from.
+                source = get_product(source_id)
+                like_units = [item for item in source.units if item.name.casefold() != unit["name"].casefold()]
+            for item in like_units:
+                product.units.append(ProductUnit(name=item.name, pieces_per_unit=item.pieces_per_unit,
+                                                 retail_price=item.retail_price, wholesale_price=item.wholesale_price))
             s.add(product)
             s.flush()
             stock.starting_stock(s, product, g.user, moment)  # the first line of its stock history
@@ -74,7 +92,7 @@ def new_product():
             flash(f"{product.name} is in the store now, sold by the {unit['name'].lower()}. Add more units below.")
             return to_product(product, "units")
     return render_template("manage/new_product.html", categories=categories, values=values, unit=unit,
-                           errors=errors), 400 if errors else 200
+                           errors=errors, like=like or request.form.get("like", type=int)), 400 if errors else 200
 
 
 @bp.route("/products/<int:product_id>", methods=["GET", "POST"])
@@ -113,8 +131,8 @@ def product(product_id):
 
 
 def item_values(item):
-    return {"name": item.name, "description": item.description, "category_id": item.category_id,
-            "low_stock_pieces": item.low_stock_pieces, "is_active": item.is_active}
+    return {"title": item.group_title, "brand": item.brand, "kind": item.kind, "description": item.description,
+            "category_id": item.category_id, "low_stock_pieces": item.low_stock_pieces, "is_active": item.is_active}
 
 
 # ---------- Stock ----------

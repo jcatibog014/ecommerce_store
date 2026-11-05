@@ -76,8 +76,23 @@ def price(ref):
         flash(problem, "error")
         return redirect(url_for("staff_orders.detail", ref=ref))
     choices = {line.id: request.form.get(f"line_{line.id}") for line in order.lines}
+    # Asked-for lines: "available" with a typed price, or "unavailable".
+    asked = {}
+    for line in order.lines:
+        if not line.is_request:
+            continue
+        answer = request.form.get(f"request_{line.id}")
+        if answer == "unavailable":
+            asked[line.id] = None
+        elif answer == "available":
+            price, trouble = forms.price(request.form, f"price_{line.id}")
+            if trouble or not price:
+                flash(f"Type the price of \"{line.product_name}\" (each {line.unit_name.lower()}), "
+                      "or choose Not available.", "error")
+                return redirect(url_for("staff_orders.detail", ref=ref))
+            asked[line.id] = price
     try:
-        orders.price_order(s, order, choices, g.user, utcnow(), request.form.get("version"), note)
+        orders.price_order(s, order, choices, g.user, utcnow(), request.form.get("version"), note, requests=asked)
         s.commit()
     except (orders.OrderChanged, orders.MoveNotAllowed) as problem:
         s.rollback()

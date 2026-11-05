@@ -10,7 +10,7 @@ from dfjc.models import Category, Photo, Product, ProductUnit
 
 from .conftest import add_product, get, log_in_as, post
 
-NEW_PRODUCT = {"name": "Soy sauce 1 L", "description": "For adobo", "category_id": "", "stock_pieces": "48",
+NEW_PRODUCT = {"title": "Soy sauce 1 L", "description": "For adobo", "category_id": "", "stock_pieces": "48",
                "low_stock_pieces": "12", "is_active": "1", "unit_name": "Bottle", "unit_pieces_per_unit": "1",
                "unit_retail_price": "48", "unit_wholesale_price": "45.50", "unit_barcode": ""}
 
@@ -75,11 +75,11 @@ def test_an_empty_wholesale_price_is_the_retail_price(app, owner):
 
 
 def test_the_new_product_form_explains_its_problems(app, owner):
-    response = post(owner, "/manage/products/new", {**NEW_PRODUCT, "name": "", "stock_pieces": "-3",
+    response = post(owner, "/manage/products/new", {**NEW_PRODUCT, "title": "", "stock_pieces": "-3",
                                                     "unit_retail_price": "abc", "unit_pieces_per_unit": "0"})
     page = response.get_data(as_text=True)
     assert response.status_code == 400
-    for message in ("A name is needed.", "Use a whole number from 0", "Use a price like 20 or 20.50.",
+    for message in ("name is needed.", "Use a whole number from 0", "Use a price like 20 or 20.50.",
                     "Use a whole number from 1"):
         assert message in page
     assert only_product(app) is None
@@ -94,7 +94,7 @@ def test_wholesale_cant_cost_more_than_retail(app, owner):
 def test_the_owner_edits_a_product(app, owner, store_id):
     product_id = add_product(app, store_id, "Soap")
     response = post(owner, f"/manage/products/{product_id}", {
-        "name": "Bath soap 90 g", "description": "", "category_id": "", "stock_pieces": "60",
+        "title": "Bath soap 90 g", "description": "", "category_id": "", "stock_pieces": "60",
         "low_stock_pieces": "6", "version": "1"})
     assert response.status_code == 302
     product = get(app, Product, product_id)
@@ -105,10 +105,10 @@ def test_the_owner_edits_a_product(app, owner, store_id):
 def test_a_save_from_an_old_form_is_refused(app, owner, store_id):
     """Two staff opened the same product. The second save would undo the first, so it's refused."""
     product_id = add_product(app, store_id, "Soap")
-    form = {"name": "First save", "category_id": "", "stock_pieces": "10", "low_stock_pieces": "0",
+    form = {"title": "First save", "category_id": "", "stock_pieces": "10", "low_stock_pieces": "0",
             "is_active": "1", "version": "1"}
     post(owner, f"/manage/products/{product_id}", form)
-    response = post(owner, f"/manage/products/{product_id}", {**form, "name": "Second save"}, follow_redirects=True)
+    response = post(owner, f"/manage/products/{product_id}", {**form, "title": "Second save"}, follow_redirects=True)
     assert "Someone else saved this product" in response.get_data(as_text=True)
     assert get(app, Product, product_id).name == "First save"
 

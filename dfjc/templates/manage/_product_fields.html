@@ -1,7 +1,12 @@
 {% from "_macros.html" import field, select, textarea %}
 {# The product's own details, used by the New Product and product pages. #}
 {% macro product_fields(values, errors, categories, with_stock=True) %}
-  {{ field('name', 'Name', values.name, errors.name, hint='With the size, like "Soy sauce 1 L"', attrs='required maxlength="80"') }}
+  {{ field('title', 'Product', values.title, errors.title, hint='With the size, like "3-in-1 coffee sachet" or "Soy sauce 1 L"', attrs='required maxlength="80"') }}
+  <div class="form-grid">
+    {{ field('brand', 'Brand', values.brand, errors.brand, hint='Optional', attrs='maxlength="40" placeholder="Kape Juan"') }}
+    {{ field('kind', 'Kind', values.kind, errors.kind, hint='Optional: flavor, color, scent', attrs='maxlength="40" placeholder="Creamy White"') }}
+  </div>
+  <p class="card-note">Products with the same name in the same category show as one card in the shop. Shoppers pick the brand, then the kind. Each one has its own prices and stock.</p>
   {% set options = [('', 'No category')] %}
   {% for c in categories %}{% set _ = options.append((c.id, c.name)) %}{% endfor %}
   {{ select('category_id', 'Category', options, values.category_id or '', errors.category_id) }}

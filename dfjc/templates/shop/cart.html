@@ -3,7 +3,7 @@
 {% block title %}Cart - {{ g.store.name }}{% endblock %}
 {% block content %}
   <div class="page-head"><h1>Your Cart</h1></div>
-  {% if items %}
+  {% if items or requests %}
     <div class="checkout-layout">
       <section class="card cart-lines">
         {% for item in items %}
@@ -29,12 +29,28 @@
             </form>
           </div>
         {% endfor %}
+        {% for asked in requests %}
+          <div class="cart-line cart-request">
+            <span class="cart-picture ask-mark" aria-hidden="true">?</span>
+            <div class="cart-what">
+              <span class="cart-name">{{ asked.name }}</span>
+              <span class="row-sub"><span class="pill pill-asked">Asked for</span> {{ asked.quantity }} x {{ asked.unit_name }} · the cashier checks if we have it, and its price</span>
+            </div>
+            <span class="cart-qty"></span>
+            <span class="cart-total muted">Price later</span>
+            <form method="post" action="{{ url_for('cart.remove_request', request_id=asked.id) }}" class="cart-remove">
+              {{ csrf() }}
+              <button class="link-button" type="submit">Remove<span class="visually-hidden"> {{ asked.wanted }}</span></button>
+            </form>
+          </div>
+        {% endfor %}
       </section>
 
       <aside class="card order-summary">
         <h2>Summary</h2>
         <dl class="sum-rows">
           <div><dt>Items, at retail price</dt><dd>{{ summary.subtotal|peso }}</dd></div>
+          {% if requests %}<div><dt>Asked-for items</dt><dd>Price later</dd></div>{% endif %}
         </dl>
         <p class="card-note">Delivery fee comes next. Then the cashier checks your order and gives the wholesale price where it applies. You see the final total before you pay.</p>
         {% if summary.can_check_out %}

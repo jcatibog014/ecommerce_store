@@ -268,7 +268,7 @@ def test_shoppers_cant_change_stock(client, shopper_id, water):
 
 
 def test_a_new_product_starts_its_history(app, owner):
-    post(owner, "/manage/products/new", {"name": "Vinegar", "category_id": "", "stock_pieces": "12", "low_stock_pieces": "0",
+    post(owner, "/manage/products/new", {"title": "Vinegar", "category_id": "", "stock_pieces": "12", "low_stock_pieces": "0",
                                          "is_active": "1", "unit_name": "Bottle", "unit_pieces_per_unit": "1",
                                          "unit_retail_price": "40"})
     with app.app_context():
@@ -341,7 +341,7 @@ def test_import_is_for_the_owner(client, cashier_id):
 
 def test_the_example_file_downloads(owner):
     response = owner.get("/manage/products/import/template.csv")
-    assert response.mimetype == "text/csv" and b"name,category,unit,pieces" in response.data
+    assert response.mimetype == "text/csv" and b"name,brand,kind,category,unit,pieces" in response.data
 
 
 # ---------- The demo ----------

@@ -125,7 +125,7 @@ def test_the_owner_can_try_changes_in_the_demo_store(app, demo):
     with app.app_context():
         product = db.session().scalar(select(Product).where(Product.store_id == store.id).limit(1))
     response = post(demo, f"/manage/products/{product.id}", {
-        "name": "Renamed in the demo", "category_id": "", "stock_pieces": "5000", "low_stock_pieces": "0",
+        "title": "Renamed in the demo", "category_id": "", "stock_pieces": "5000", "low_stock_pieces": "0",
         "is_active": "1", "version": str(product.version)})
     assert response.status_code == 302
     assert "Renamed in the demo" in demo.get("/products").get_data(as_text=True)

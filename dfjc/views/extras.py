@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from .. import checkout, db, forms, vouchers
+from .. import catalog, checkout, db, forms, vouchers
 from ..dates import local_today, utcnow
 from ..models import (
     VOUCHER_AMOUNT, VOUCHER_DELIVERY, VOUCHER_KINDS, VOUCHER_PERCENT, Address, Favorite, Order, Product, ProductUnit,
@@ -47,7 +47,7 @@ def favorites():
                                  .where(Favorite.user_id == g.user.id, Product.is_active.is_(True))
                                  .order_by(Favorite.created_at.desc())
                                  .options(selectinload(Product.units), selectinload(Product.category))).all()
-    return render_template("shop/favorites.html", products=[p for p in found if p.active_units])
+    return render_template("shop/favorites.html", groups=catalog.wrap([p for p in found if p.active_units]))
 
 
 def favorite_ids(s, user):
@@ -66,6 +66,8 @@ def buy_again(ref):
         abort(404)
     added, missing = 0, []
     for line in order.lines:
+        if line.is_request:
+            continue  # asked-for items aren't in the system; ask for them again on the product page
         unit = s.get(ProductUnit, line.unit_id) if line.unit_id else None
         if unit is None or not unit.is_active or not unit.product.is_active:
             missing.append(line.product_name)

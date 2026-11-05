@@ -22,9 +22,11 @@
       <section class="card">
         <h2>How the File Looks</h2>
         <p class="card-note">One row for each unit. Rows with the same name are one product. Prices are in pesos.</p>
-        <pre class="csv-sample">name,category,unit,pieces,retail,wholesale,stock
-Soy sauce 1 L,Condiments,Bottle,1,48,45,48
-Soy sauce 1 L,Condiments,Case of 12,12,560,530,</pre>
+        <pre class="csv-sample">name,brand,kind,category,unit,pieces,retail,wholesale,stock
+Soy sauce 1 L,,,Condiments,Bottle,1,48,45,48
+Soy sauce 1 L,,,Condiments,Case of 12,12,560,530,
+3-in-1 coffee sachet,Kape Juan,Creamy White,Drinks,Sachet,1,12,10.50,300</pre>
+        <p class="card-note">Brand and kind are optional. The same name with another brand or kind is another kind of the product, with its own prices and stock.</p>
         <p class="card-note">New products get the stock from their first row. Products you already have keep their stock; only their prices change.</p>
         <a class="button button-quiet" href="{{ url_for('manage.import_template') }}">Download an example file</a>
       </section>

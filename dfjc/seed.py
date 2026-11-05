@@ -101,6 +101,20 @@ CATALOG = [
          [("Bar", 1, 15, 13.50), ("Box of 24", 24, 340, 320)]),
     ]),
 ]
+# Brands and kinds (all made up). The CATALOG product becomes the first kind; each extra
+# kind is its own product with its own stock: (brand, kind, stock pieces, pesos more per piece).
+VARIANTS = {
+    "3-in-1 coffee sachet": ("Kape Juan", "Original", [("Kape Juan", "Creamy White", 240, 0),
+                                                       ("Barako Gold", "Original", 180, 1),
+                                                       ("Barako Gold", "Black", 0, 1)]),
+    "Instant pancit canton 60 g": ("Pancit Ko", "Sweet and Spicy", [("Pancit Ko", "Calamansi", 216, 0),
+                                                                    ("Pancit Ko", "Hot Chili", 144, 0)]),
+    "Shampoo sachet 12 mL": ("Lusog Hair", "Anti-dandruff", [("Lusog Hair", "Smooth and Silky", 200, 0),
+                                                             ("Bango", "Fresh Mint", 150, 0.5)]),
+    "Bath soap 90 g": ("Puti", "White", [("Puti", "Lemon", 48, 0)]),
+    "Laundry powder 70 g": ("Kalinis", "Original", [("Kalinis", "Floral", 200, 0)]),
+}
+
 SWITCHED_OFF = ("Ice candy, buko", "Summer only. Switched off until the hot months.", 0, 0, "candy",
                 [("Piece", 1, 10, 9)])
 
@@ -114,6 +128,7 @@ def fill(s, store, moment):
     order = 0
     added = 0
     by_icon = {}
+    made = {}
     for sort_order, (category_name, icon, products) in enumerate(CATALOG):
         category = Category(store_id=store.id, name=category_name, icon=icon, sort_order=sort_order)
         s.add(category)
@@ -130,7 +145,9 @@ def fill(s, store, moment):
             s.add(product)
             s.flush()
             starting_stock(s, product, None, created)
+            made[name] = (product, units, created)
             added += 1
+    added += fill_variants(s, store, made)
     name, description, stock, low, icon, units = SWITCHED_OFF
     product = Product(store_id=store.id, category_id=by_icon[icon].id, name=name, description=description,
                       stock_pieces=stock, low_stock_pieces=low, is_active=False,
@@ -200,8 +217,10 @@ def fill_orders(s, store, people, moment):
                                    sort_order=order_index)
         s.add(areas[name])
     s.flush()
-    units = {(unit.product.name, unit.name): unit
-             for unit in s.scalars(select(ProductUnit).join(Product).where(Product.store_id == store.id))}
+    units = {}
+    for unit in s.scalars(select(ProductUnit).join(Product).where(Product.store_id == store.id)
+                          .order_by(ProductUnit.id)):
+        units.setdefault((unit.product.group_title, unit.name), unit)
 
     home = Address(user_id=people["ana"].id, label="Home", area_id=areas["San Isidro"].id,
                    street="45 Mabini Street, Purok 3", landmark="the blue gate beside the chapel",
@@ -211,10 +230,13 @@ def fill_orders(s, store, people, moment):
 
     promos = fill_promos(s, store, moment)
 
-    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False, voucher=None):
+    def order(who, lines, ago, fulfilment=PICKUP, address=None, note="", online=False, voucher=None, asks=()):
+        """asks: [(product title, what they want, size, how many)] for "Not in the list? Ask for it"."""
         user = people[who]
         for product_name, unit_name, quantity in lines:
             checkout.add_to_cart(s, user, units[(product_name, unit_name)], quantity, moment - ago)
+        for title, wanted, unit_name, quantity in asks:
+            checkout.ask_for(s, user, units[(title, unit_name)].product, wanted, unit_name, quantity, moment - ago)
         s.flush()
         area = address.area if address else None
         method = "online" if online else "cash_pickup" if fulfilment == PICKUP else "cod"
@@ -223,9 +245,16 @@ def fill_orders(s, store, people, moment):
         placed, _ = checkout.place_order(s, user, store, choice, checkout.new_checkout_key(), moment - ago)
         return placed
 
-    def price(placed, ago, wholesale_bulk=True, note=""):
+    def price(placed, ago, wholesale_bulk=True, note="", answers=None):
+        """answers: {what was asked for: price in pesos, or None for not available}."""
         choices = {line.id: WHOLESALE for line in placed.lines if wholesale_bulk and line.pieces_per_unit > 1}
-        orders.price_order(s, placed, choices, people["lorna"], moment - ago, placed.version, note)
+        asked = {}
+        for line in placed.lines:
+            if line.is_request:
+                wanted = line.product_name.split(" - ", 1)[1]
+                price_pesos = (answers or {}).get(wanted)
+                asked[line.id] = None if price_pesos is None else centavos(price_pesos)
+        orders.price_order(s, placed, choices, people["lorna"], moment - ago, placed.version, note, requests=asked)
 
     hours, days = timedelta(hours=1), timedelta(days=1)
     # Ana's own orders (what the visitor sees as a shopper), oldest first.
@@ -239,11 +268,15 @@ def fill_orders(s, store, people, moment):
 
     # Other shoppers: a reseller's bulk orders (one priced at wholesale), a delivery, and one the store cancelled.
     bulk = order("marites", [("Instant pancit canton 60 g", "Box of 72", 1), ("3-in-1 coffee sachet", "Box of 30", 2),
-                             ("Candles, big", "Piece", 4)], 2 * days, voucher="SUKI50")
-    price(bulk, 2 * days - hours, note="Wholesale price for the boxes. Salamat po!")
+                             ("Candles, big", "Piece", 4)], 2 * days, voucher="SUKI50",
+                 asks=[("3-in-1 coffee sachet", "Barako Gold Creamy White", "Pack of 10", 2),
+                       ("Shampoo sachet 12 mL", "Lusog Hair Kids", "Strip of 12", 1)])
+    price(bulk, 2 * days - hours, note="Wholesale price for the boxes. We have the creamy coffee; sorry, no kids' shampoo.",
+          answers={"Barako Gold Creamy White": 115, "Lusog Hair Kids": None})
     order("marites", [("Instant noodles, chicken 55 g", "Box of 72", 2), ("Sardines in tomato sauce 155 g", "Case of 100", 1),
                       ("Laundry powder 70 g", "Case of 144", 1), ("Shampoo sachet 12 mL", "Strip of 12", 5)],
-          timedelta(minutes=12), note="For my sari-sari store. I will pick up tomorrow morning.")
+          timedelta(minutes=12), note="For my sari-sari store. I will pick up tomorrow morning.",
+          asks=[("Instant pancit canton 60 g", "Pancit Ko Extra Hot", "Box of 72", 1)])
     ramon_home = Address(user_id=people["ramon"].id, label="Home", area_id=areas["Poblacion"].id,
                          street="12 Luna Street", landmark="", created_at=moment - 5 * days)
     ramon_home.area = areas["Poblacion"]
@@ -261,12 +294,16 @@ def fill_orders(s, store, people, moment):
     # Ana's favorites: what she buys every week.
     from .models import Favorite
     for name in ("Bottled water 500 mL", "Instant pancit canton 60 g", "3-in-1 coffee sachet", "Well-milled rice"):
-        product = s.scalar(select(Product).where(Product.store_id == store.id, Product.name == name))
+        product = s.scalar(select(Product).where(Product.store_id == store.id,
+                                                 (Product.title == name) | (Product.name == name))
+                           .order_by(Product.id).limit(1))
         s.add(Favorite(user_id=people["ana"].id, product_id=product.id, created_at=moment - 20 * days))
 
     # Something in Ana's cart, so the cart page has an example.
     checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
     checkout.add_to_cart(s, people["ana"], units[("Instant pancit canton 60 g", "Pack")], 6, moment)
+    checkout.ask_for(s, people["ana"], units[("3-in-1 coffee sachet", "Sachet")].product, "Kape Juan Mocha",
+                     "Sachet", 10, moment)
     s.flush()
 
 
@@ -395,7 +432,9 @@ def fill_fulfilment(s, store, people, order, price, moment, areas, ana_home):
     through(out, ["pack", "packed", "send_out"], 10 * minutes)
 
     # The stock history: deliveries from the supplier and a monthly count.
-    units = {product.name: product for product in s.scalars(select(Product).where(Product.store_id == store.id))}
+    units = {}
+    for product in s.scalars(select(Product).where(Product.store_id == store.id).order_by(Product.id)):
+        units.setdefault(product.group_title, product)
     stock.restock(s, units["Cup noodles, beef"], 24, lorna, moment - 3 * days, "Supplier: Mabuhay Trading, receipt 4417")
     stock.restock(s, units["Cooking oil 1 L"], 24, people["ana"], moment - 2 * days, "Two cases from the market")
     soap = units["Bath soap 90 g"]
@@ -473,3 +512,29 @@ def fill_promos(s, store, moment):
         made[code] = voucher
     s.flush()
     return made
+
+
+def fill_variants(s, store, made):
+    """Turn some products into brands and kinds: the first kind is the CATALOG product."""
+    from .catalog import compose_name
+    added = 0
+    for title, (brand, kind, extras) in VARIANTS.items():
+        base, units, created = made[title]
+        base.title, base.brand, base.kind = title, brand, kind
+        base.name = compose_name(title, brand, kind)
+        for number, (other_brand, other_kind, stock_pieces, more) in enumerate(extras, start=1):
+            at = created + timedelta(minutes=number)
+            product = Product(store_id=store.id, category_id=base.category_id, title=title, brand=other_brand,
+                              kind=other_kind, name=compose_name(title, other_brand, other_kind),
+                              description=base.description, stock_pieces=stock_pieces,
+                              low_stock_pieces=base.low_stock_pieces, created_at=at, updated_at=at)
+            for unit_name, pieces, retail, wholesale in units:
+                product.units.append(ProductUnit(name=unit_name, pieces_per_unit=pieces,
+                                                 retail_price=centavos(retail + more * pieces),
+                                                 wholesale_price=centavos(wholesale + more * pieces)))
+            s.add(product)
+            s.flush()
+            starting_stock(s, product, None, at)
+            added += 1
+    s.flush()
+    return added

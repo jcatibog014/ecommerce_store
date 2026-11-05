@@ -98,6 +98,9 @@
         {% for item in items %}
           <li><span>{{ item.quantity }} x {{ item.unit.product.name }} <span class="row-sub">{{ item.unit.name }}</span></span><span>{{ item.line_total|peso }}</span></li>
         {% endfor %}
+        {% for asked in requests %}
+          <li><span>{{ asked.quantity }} x {{ asked.name }} <span class="row-sub">{{ asked.unit_name }} · asked for</span></span><span class="muted">Price later</span></li>
+        {% endfor %}
       </ul>
       <div class="voucher-box{% if errors.voucher %} has-error{% endif %}">
         <label class="field-label" for="voucher">Voucher code <span class="hint">Optional</span></label>

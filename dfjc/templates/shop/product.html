@@ -1,15 +1,65 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf, product_picture, stock_pill %}
+{% from "_macros.html" import csrf, stock_pill %}
+{% from "_icons.html" import category_icon %}
 {% block title %}{{ product.name }} - {{ g.store.name }}{% endblock %}
 {% block content %}
   {# Visitors see the buttons too (they lead to Log In); staff sell at the counter instead. #}
   {% set can_order = not g.user or can(SHOP) %}
+  {% set show_brands = brands|length > 1 or (brands and brands[0][0]) %}
+  {% set show_kinds = kinds|length > 1 or (kinds and kinds[0][0]) %}
   <a class="back-link" href="{{ url_for('shop.products', category=product.category_id) if product.category else url_for('shop.products') }}">&larr; {{ product.category.name if product.category else 'All Products' }}</a>
-  <div class="product-page{% if not product.photo_id %} no-photo{% endif %}">
-    {% if product.photo_id %}<div class="product-page-picture">{{ product_picture(product, small=False) }}</div>{% endif %}
+  <div class="product-page">
     <div class="product-page-info">
       {% if product.category %}<p class="kicker">{{ product.category.name }}</p>{% endif %}
-      <h1>{{ product.name }}</h1>
+      <h1>{{ product.group_title }}</h1>
+      {% if product.variant_label %}<p class="product-variant">{{ product.variant_label }}</p>{% endif %}
+
+      {# Each brand and kind is its own item with its own prices and stock: choosing one opens its page. #}
+      {% if show_brands %}
+        <div class="option-row">
+          <p class="option-label" id="brand-label">Brand</p>
+          <ul class="option-chips" aria-labelledby="brand-label">
+            {% for brand, target, chosen in brands %}
+              <li><a class="option-chip" href="{{ url_for('shop.product', product_id=target.id) }}"{% if chosen %} aria-current="true"{% endif %}>{{ brand or 'Other' }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      {% if show_kinds %}
+        <div class="option-row">
+          <p class="option-label" id="kind-label">Kind</p>
+          <ul class="option-chips" aria-labelledby="kind-label">
+            {% for kind, target, chosen, available in kinds %}
+              <li><a class="option-chip{% if not available %} is-out{% endif %}" href="{{ url_for('shop.product', product_id=target.id) }}"{% if chosen %} aria-current="true"{% endif %}>
+                {{ kind or 'Regular' }}{% if not available %}<span class="visually-hidden"> (out of stock)</span>{% endif %}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if can_order %}
+        {# A brand or kind the store hasn't put in the system: the cashier checks if it is on the shelf. #}
+        <details class="ask-for"{% if not (show_brands or show_kinds) %} data-small{% endif %}>
+          <summary>Not in the list? Ask for it</summary>
+          <form method="post" action="{{ url_for('cart.ask') }}" class="ask-form">
+            {{ csrf() }}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <p class="card-note">Tell us the brand and kind you want. The cashier checks if we have it and tells you the price before you pay.</p>
+            <div class="ask-fields">
+              <label class="field ask-wanted"><span class="field-label">What you're looking for</span>
+                <input type="text" name="wanted" maxlength="80" required placeholder="Like: Nescafe Classic, or Creamy White in a big box"></label>
+              <label class="field"><span class="field-label">Size</span>
+                <select name="unit_name">
+                  {% for unit in product.active_units %}<option value="{{ unit.name }}">{{ unit.name }}</option>{% endfor %}
+                </select></label>
+              <label class="field ask-quantity"><span class="field-label">How many</span>
+                <input type="number" name="quantity" value="1" min="1" max="999" inputmode="numeric"></label>
+              <button class="button button-quiet" type="submit">Ask for it</button>
+            </div>
+          </form>
+        </details>
+      {% endif %}
+
       <div class="product-status">
         {{ stock_pill(product) }}
         {% if g.user and can(SHOP) %}
@@ -55,5 +105,20 @@
       <p class="wholesale-note">These are retail prices. Buying in bulk for your store? The cashier checks every order before you pay and gives the wholesale price where it applies.</p>
       {% if not can_order %}<p class="muted small">Ordering is for shopper accounts. Staff sell at the counter.</p>{% endif %}
     </div>
+
+    {# The right side: the photo, big. Without one, a clean banner in the category's colour
+       (hidden on phones, where it would only push the prices down). #}
+    {% if product.photo_id %}
+      <div class="product-visual">
+        <img class="product-photo" src="{{ photo_url(product, small=False) }}" alt="{{ product.name }}" width="1000" height="1000">
+      </div>
+    {% else %}
+      <div class="product-visual product-banner tile-{{ (product.category_id or 0) % 6 }}" aria-hidden="true">
+        <span class="banner-icon">{{ category_icon(product.icon) }}</span>
+        <span class="banner-title">{{ product.group_title }}</span>
+        {% if product.variant_label %}<span class="banner-variant">{{ product.variant_label }}</span>{% endif %}
+        {% if variants|length > 1 %}<span class="banner-note">{{ variants|length }} kinds to choose from</span>{% endif %}
+      </div>
+    {% endif %}
   </div>
 {% endblock %}

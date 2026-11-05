@@ -9,6 +9,7 @@
   <div class="page-head">
     <h1>{{ product.name }}</h1>
     <div class="actions">
+      {% if can(MANAGE_PRODUCTS) %}<a class="button button-quiet" href="{{ url_for('manage.new_product', like=product.id) }}">Add another kind</a>{% endif %}
       {% if product.is_active and product.active_units %}
         <a class="button button-quiet" href="{{ url_for('shop.product', product_id=product.id) }}">See it in the store</a>
       {% else %}

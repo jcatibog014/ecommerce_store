@@ -101,6 +101,20 @@ CATALOG = [
          [("Bar", 1, 15, 13.50), ("Box of 24", 24, 340, 320)]),
     ]),
 ]
+# Brands and kinds (all made up). The CATALOG product becomes the first kind; each extra
+# kind is its own product with its own stock: (brand, kind, stock pieces, pesos more per piece).
+VARIANTS = {
+    "3-in-1 coffee sachet": ("Kape Juan", "Original", [("Kape Juan", "Creamy White", 240, 0),
+                                                       ("Barako Gold", "Original", 180, 1),
+                                                       ("Barako Gold", "Black", 0, 1)]),
+    "Instant pancit canton 60 g": ("Pancit Ko", "Sweet and Spicy", [("Pancit Ko", "Calamansi", 216, 0),
+                                                                    ("Pancit Ko", "Hot Chili", 144, 0)]),
+    "Shampoo sachet 12 mL": ("Lusog Hair", "Anti-dandruff", [("Lusog Hair", "Smooth and Silky", 200, 0),
+                                                             ("Bango", "Fresh Mint", 150, 0.5)]),
+    "Bath soap 90 g": ("Puti", "White", [("Puti", "Lemon", 48, 0)]),
+    "Laundry powder 70 g": ("Kalinis", "Original", [("Kalinis", "Floral", 200, 0)]),
+}
+
 SWITCHED_OFF = ("Ice candy, buko", "Summer only. Switched off until the hot months.", 0, 0, "candy",
                 [("Piece", 1, 10, 9)])
 
@@ -114,6 +128,7 @@ def fill(s, store, moment):
     order = 0
     added = 0
     by_icon = {}
+    made = {}
     for sort_order, (category_name, icon, products) in enumerate(CATALOG):
         category = Category(store_id=store.id, name=category_name, icon=icon, sort_order=sort_order)
         s.add(category)
@@ -130,7 +145,9 @@ def fill(s, store, moment):
             s.add(product)
             s.flush()
             starting_stock(s, product, None, created)
+            made[name] = (product, units, created)
             added += 1
+    added += fill_variants(s, store, made)
     name, description, stock, low, icon, units = SWITCHED_OFF
     product = Product(store_id=store.id, category_id=by_icon[icon].id, name=name, description=description,
                       stock_pieces=stock, low_stock_pieces=low, is_active=False,
@@ -200,8 +217,10 @@ def fill_orders(s, store, people, moment):
                                    sort_order=order_index)
         s.add(areas[name])
     s.flush()
-    units = {(unit.product.name, unit.name): unit
-             for unit in s.scalars(select(ProductUnit).join(Product).where(Product.store_id == store.id))}
+    units = {}
+    for unit in s.scalars(select(ProductUnit).join(Product).where(Product.store_id == store.id)
+                          .order_by(ProductUnit.id)):
+        units.setdefault((unit.product.group_title, unit.name), unit)
 
     home = Address(user_id=people["ana"].id, label="Home", area_id=areas["San Isidro"].id,
                    street="45 Mabini Street, Purok 3", landmark="the blue gate beside the chapel",
@@ -261,7 +280,9 @@ def fill_orders(s, store, people, moment):
     # Ana's favorites: what she buys every week.
     from .models import Favorite
     for name in ("Bottled water 500 mL", "Instant pancit canton 60 g", "3-in-1 coffee sachet", "Well-milled rice"):
-        product = s.scalar(select(Product).where(Product.store_id == store.id, Product.name == name))
+        product = s.scalar(select(Product).where(Product.store_id == store.id,
+                                                 (Product.title == name) | (Product.name == name))
+                           .order_by(Product.id).limit(1))
         s.add(Favorite(user_id=people["ana"].id, product_id=product.id, created_at=moment - 20 * days))
 
     # Something in Ana's cart, so the cart page has an example.
@@ -395,7 +416,9 @@ def fill_fulfilment(s, store, people, order, price, moment, areas, ana_home):
     through(out, ["pack", "packed", "send_out"], 10 * minutes)
 
     # The stock history: deliveries from the supplier and a monthly count.
-    units = {product.name: product for product in s.scalars(select(Product).where(Product.store_id == store.id))}
+    units = {}
+    for product in s.scalars(select(Product).where(Product.store_id == store.id).order_by(Product.id)):
+        units.setdefault(product.group_title, product)
     stock.restock(s, units["Cup noodles, beef"], 24, lorna, moment - 3 * days, "Supplier: Mabuhay Trading, receipt 4417")
     stock.restock(s, units["Cooking oil 1 L"], 24, people["ana"], moment - 2 * days, "Two cases from the market")
     soap = units["Bath soap 90 g"]
@@ -473,3 +496,29 @@ def fill_promos(s, store, moment):
         made[code] = voucher
     s.flush()
     return made
+
+
+def fill_variants(s, store, made):
+    """Turn some products into brands and kinds: the first kind is the CATALOG product."""
+    from .catalog import compose_name
+    added = 0
+    for title, (brand, kind, extras) in VARIANTS.items():
+        base, units, created = made[title]
+        base.title, base.brand, base.kind = title, brand, kind
+        base.name = compose_name(title, brand, kind)
+        for number, (other_brand, other_kind, stock_pieces, more) in enumerate(extras, start=1):
+            at = created + timedelta(minutes=number)
+            product = Product(store_id=store.id, category_id=base.category_id, title=title, brand=other_brand,
+                              kind=other_kind, name=compose_name(title, other_brand, other_kind),
+                              description=base.description, stock_pieces=stock_pieces,
+                              low_stock_pieces=base.low_stock_pieces, created_at=at, updated_at=at)
+            for unit_name, pieces, retail, wholesale in units:
+                product.units.append(ProductUnit(name=unit_name, pieces_per_unit=pieces,
+                                                 retail_price=centavos(retail + more * pieces),
+                                                 wholesale_price=centavos(wholesale + more * pieces)))
+            s.add(product)
+            s.flush()
+            starting_stock(s, product, None, at)
+            added += 1
+    s.flush()
+    return added

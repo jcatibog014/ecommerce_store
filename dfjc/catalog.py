@@ -2,8 +2,17 @@
 
 Shoppers only see products that are switched on and have at least one unit
 switched on. They always see RETAIL prices; the wholesale price is for the
-cashier to give (from stage 2).
+cashier to give.
+
+Brands and kinds: every brand + kind is its own product, with its own units,
+prices, stock and photo. Products with the same title in the same category
+are ONE card in the shop (a Group); on the product page the shopper picks the
+brand, then the kind. A product with no brand or kind is a group of one.
 """
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+
 from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
@@ -71,23 +80,130 @@ def search_condition(q):
             for word in q.split()[:6]]
 
 
+def compose_name(title, brand="", kind=""):
+    """The product's full name, used in orders and receipts: "3-in-1 coffee sachet - Kape Juan Creamy White"."""
+    label = " ".join(part for part in (brand, kind) if part)
+    return f"{title} - {label}" if label else title
+
+
+def group_key(product):
+    return (product.category_id, product.group_title.casefold())
+
+
+@dataclass
+class Group:
+    """One card in the shop: every brand and kind of one product."""
+    title: str
+    variants: list = field(default_factory=list)  # products, sorted by brand then kind
+
+    @property
+    def first(self):
+        """The kind the card opens: the cheapest one that can be bought (else the first)."""
+        buyable = [product for product in self.variants if stock_word(product)[0] != "out"]
+        return min(buyable or self.variants, key=lambda product: (cheapest(product).retail_price, product.id))
+
+    @property
+    def category(self):
+        return self.first.category
+
+    @property
+    def category_id(self):
+        return self.first.category_id
+
+    @property
+    def cheapest_unit(self):
+        return min((cheapest(product) for product in self.variants), key=lambda unit: (unit.retail_price, unit.pieces_per_unit))
+
+    @property
+    def photo_product(self):
+        return next((product for product in self.variants if product.photo_id), None)
+
+    @property
+    def brands(self):
+        return sorted({product.brand for product in self.variants if product.brand}, key=str.casefold)
+
+    @property
+    def newest(self):
+        return max((product.created_at for product in self.variants), default=datetime.min)
+
+    @property
+    def stock(self):
+        """One kind: its own stock word. Several: in stock if any kind can be bought."""
+        if len(self.variants) == 1:
+            return stock_word(self.variants[0])
+        if any(stock_word(product)[0] != "out" for product in self.variants):
+            return "in", "In stock"
+        return "out", "Out of stock"
+
+    @property
+    def size_count(self):
+        """How many more sizes the card's cheapest kind has (Pack, Case...)."""
+        return len(self.first.active_units) - 1
+
+
+def sort_variants(products):
+    return sorted(products, key=lambda product: (product.brand.casefold(), product.kind.casefold(), product.id))
+
+
+def make_groups(products):
+    found = defaultdict(list)
+    for product in products:
+        found[group_key(product)].append(product)
+    return [Group(title=items[0].group_title, variants=sort_variants(items)) for items in found.values()]
+
+
+def sort_groups(groups, sort):
+    keys = {
+        "name": lambda group: (group.title.casefold(),),
+        "price-low": lambda group: (group.cheapest_unit.retail_price, group.title.casefold()),
+        "price-high": lambda group: (-group.cheapest_unit.retail_price, group.title.casefold()),
+        "new": lambda group: (-group.newest.timestamp(), group.title.casefold()),
+    }
+    return sorted(groups, key=keys[sort])
+
+
 def shop_products(s, store, filters):
-    """(products on this page, how many match in all)."""
+    """(groups on this page, how many groups match in all).
+
+    Grouping happens here in Python, not in SQL: a store has hundreds of products, not millions,
+    and one card per title is much easier to read this way."""
     where = list(shop_filter(store)) + search_condition(filters["q"])
     if filters["category"]:
         where.append(Product.category_id == filters["category"])
-    total = s.scalar(select(func.count()).select_from(Product).where(*where))
-    order = {
-        "name": (func.lower(Product.name), Product.id),
-        "price-low": (cheapest_unit_price(), func.lower(Product.name)),
-        "price-high": (cheapest_unit_price().desc(), func.lower(Product.name)),
-        "new": (Product.created_at.desc(), Product.id.desc()),
-    }[filters["sort"]]
-    products = s.scalars(
-        select(Product).where(*where).order_by(*order)
-        .offset((filters["page"] - 1) * PAGE_SIZE).limit(PAGE_SIZE)
-        .options(selectinload(Product.units), selectinload(Product.category))).all()
-    return products, total
+    products = s.scalars(select(Product).where(*where)
+                         .options(selectinload(Product.units), selectinload(Product.category))).all()
+    groups = sort_groups(make_groups(products), filters["sort"])
+    start = (filters["page"] - 1) * PAGE_SIZE
+    return groups[start:start + PAGE_SIZE], len(groups)
+
+
+def siblings(s, store, product):
+    """Every kind a shopper can buy in this product's group (itself included), sorted by brand then kind."""
+    same_category = (Product.category_id.is_(None) if product.category_id is None
+                     else Product.category_id == product.category_id)
+    found = s.scalars(select(Product).where(*shop_filter(store), same_category)
+                      .options(selectinload(Product.units))).all()
+    key = product.group_title.casefold()
+    return sort_variants([item for item in found if item.group_title.casefold() == key])
+
+
+def choices(product, variants):
+    """The Brand and Kind pickers for a product page:
+    ([(brand, product to open, chosen?)], [(kind, product, chosen?, can be bought?)])."""
+    brands = []
+    for brand in sorted({item.brand for item in variants}, key=str.casefold):
+        same = [item for item in variants if item.brand == brand]
+        # The same kind in the other brand if it has one, else that brand's first kind.
+        target = next((item for item in same if item.kind == product.kind), same[0])
+        brands.append((brand, target, brand == product.brand))
+    kinds = [(item.kind, item, item.id == product.id, stock_word(item)[0] != "out")
+             for item in variants if item.brand == product.brand]
+    return brands, kinds
+
+
+def wrap(products):
+    """Products as groups of one (Favorites shows the exact kinds that were saved)."""
+    return [Group(title=product.name, variants=[product]) for product in products]
 
 
 def categories(s, store):
@@ -96,15 +212,16 @@ def categories(s, store):
 
 
 def category_counts(s, store):
-    """{category id: products shoppers can see in it}."""
-    rows = s.execute(select(Product.category_id, func.count()).where(*shop_filter(store))
+    """{category id: cards (groups) shoppers can see in it}."""
+    titles = func.lower(func.coalesce(func.nullif(Product.title, ""), Product.name))
+    rows = s.execute(select(Product.category_id, func.count(titles.distinct())).where(*shop_filter(store))
                      .group_by(Product.category_id)).all()
     return dict(rows)
 
 
 def newest(s, store, limit=8):
-    return s.scalars(select(Product).where(*shop_filter(store)).order_by(Product.created_at.desc(), Product.id.desc())
-                     .limit(limit).options(selectinload(Product.units), selectinload(Product.category))).all()
+    groups, _ = shop_products(s, store, {"q": "", "category": None, "sort": "new", "page": 1})
+    return groups[:limit]
 
 
 def shop_product(s, store, product_id):
@@ -155,7 +272,10 @@ def read_product_form(form, store_categories, with_stock):
     """Returns (values, errors) for the product form."""
     errors = {}
     values = {}
-    values["name"], errors["name"] = forms.text(form, "name", 80, required=True, label="A name")
+    values["title"], errors["title"] = forms.text(form, "title", 80, required=True, label="The product's name")
+    values["brand"], errors["brand"] = forms.text(form, "brand", 40)
+    values["kind"], errors["kind"] = forms.text(form, "kind", 40)
+    values["name"] = compose_name(values["title"], values["brand"], values["kind"])
     values["description"], errors["description"] = forms.text(form, "description", 1000)
     raw_category = form.get("category_id", "")
     ids = {category.id for category in store_categories}

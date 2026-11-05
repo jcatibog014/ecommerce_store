@@ -33,6 +33,10 @@ PAGES = [
     ("products.png", "shopper", "/products", "light", DESKTOP),
     ("search.png", "shopper", "/products?q=noodles&sort=price-low", "light", DESKTOP),
     ("product.png", "shopper", "{water}", "light", DESKTOP),
+    ("product-kinds.png", "shopper", "{coffee}", "light", DESKTOP),
+    ("product-kinds-dark.png", "shopper", "{coffee}", "dark", DESKTOP),
+    ("phone-product-kinds.png", "shopper", "{coffee}", "light", PHONE),
+    ("add-kind.png", "owner", "{coffee-like}", "light", DESKTOP),
     ("phone.png", "shopper", "/", "light", PHONE),
     ("phone-products.png", "shopper", "/products", "light", PHONE),
     ("manage-products.png", "owner", "/manage/products", "light", DESKTOP),
@@ -122,6 +126,14 @@ def address(page, path):
         page.goto(f"{BASE}/manage/orders")
         row = page.locator("tr", has_text="Marites Santos").filter(has_text="Has bulk items")
         return row.locator(".row-link").first.get_attribute("href")
+    if path in ("{coffee}", "{coffee-like}"):
+        # The 3-in-1 coffee: two brands, four kinds. Open Creamy White, so both choices show.
+        page.goto(f"{BASE}/products?q=3-in-1")
+        page.goto(BASE + page.locator(".card-link", has_text="3-in-1 coffee sachet").get_attribute("href"))
+        link = page.locator(".option-chip", has_text="Creamy White").get_attribute("href")
+        if path == "{coffee}":
+            return link
+        return "/manage/products/new?like=" + link.rsplit("/", 1)[1]
     if path.startswith("{water"):
         name, _, anchor = path.partition("#")
         page.goto(f"{BASE}/products?q=bottled+water")

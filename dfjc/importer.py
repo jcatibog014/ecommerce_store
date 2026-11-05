@@ -2,9 +2,13 @@
 
 One row per unit. Rows with the same product name are one product:
 
-    name,category,unit,pieces,retail,wholesale,stock,barcode,description
-    Soy sauce 1 L,Condiments,Bottle,1,48,45,48,,For adobo
-    Soy sauce 1 L,Condiments,Case of 12,12,560,530,,,
+    name,brand,kind,category,unit,pieces,retail,wholesale,stock,barcode,description
+    Soy sauce 1 L,,,Condiments,Bottle,1,48,45,48,,For adobo
+    Soy sauce 1 L,,,Condiments,Case of 12,12,560,530,,,
+    3-in-1 coffee sachet,Kape Juan,Creamy White,Drinks,Sachet,1,12,10.50,300,,
+
+Brand and kind are optional: rows with the same name but another brand or kind
+are another kind of the same product (own prices and stock), one card in the shop.
 
 read() checks every row and builds a plan; nothing is saved. The owner sees
 a preview, then apply() saves the whole plan in ONE transaction: every row,
@@ -20,16 +24,20 @@ import io
 from sqlalchemy import func, select
 
 from . import stock
+from .catalog import compose_name
 from .models import MOVE_IMPORT, Category, Product, ProductUnit
 from .money import parse_peso
 
 MAX_BYTES = 500_000
 MAX_ROWS = 2000
-COLUMNS = ("name", "category", "unit", "pieces", "retail", "wholesale", "stock", "barcode", "description")
+COLUMNS = ("name", "brand", "kind", "category", "unit", "pieces", "retail", "wholesale", "stock", "barcode",
+           "description")
 REQUIRED = ("name", "unit", "pieces", "retail")
-TEMPLATE = ("name,category,unit,pieces,retail,wholesale,stock,barcode,description\n"
-            "Soy sauce 1 L,Condiments,Bottle,1,48,45,48,,For adobo\n"
-            "Soy sauce 1 L,Condiments,Case of 12,12,560,530,,,\n")
+TEMPLATE = ("name,brand,kind,category,unit,pieces,retail,wholesale,stock,barcode,description\n"
+            "Soy sauce 1 L,,,Condiments,Bottle,1,48,45,48,,For adobo\n"
+            "Soy sauce 1 L,,,Condiments,Case of 12,12,560,530,,,\n"
+            "3-in-1 coffee sachet,Kape Juan,Creamy White,Drinks,Sachet,1,12,10.50,300,,\n"
+            "3-in-1 coffee sachet,Kape Juan,Creamy White,Drinks,Box of 30,30,320,300,,,\n")
 
 
 class ImportProblem(ValueError):
@@ -92,10 +100,13 @@ def read(s, store, text):
         if problems:
             errors.append((number, name or "(no name)", "; ".join(problems).capitalize() + "."))
             continue
-        key = name.lower()
+        brand, kind = row.get("brand", "")[:40], row.get("kind", "")[:40]
+        full = compose_name(name, brand, kind)
+        key = full.lower()
         product = products.setdefault(key, {
-            "name": name, "category": row.get("category", "")[:60], "description": row.get("description", "")[:1000],
-            "stock": start, "existing": existing.get(key), "units": [], "unit_names": set()})
+            "name": full, "title": name, "brand": brand, "kind": kind, "category": row.get("category", "")[:60],
+            "description": row.get("description", "")[:1000], "stock": start, "existing": existing.get(key),
+            "units": [], "unit_names": set()})
         if unit.lower() in product["unit_names"]:
             errors.append((number, name, f'"{unit}" appears twice for this product.'))
             continue
@@ -125,7 +136,8 @@ def apply(s, store, plan, by, moment):
                 categories[item["category"].lower()] = category
         product = item["existing"]
         if product is None:
-            product = Product(store_id=store.id, name=item["name"], description=item["description"],
+            product = Product(store_id=store.id, name=item["name"], title=item["title"], brand=item["brand"],
+                              kind=item["kind"], description=item["description"],
                               category_id=category.id if category else None, stock_pieces=item["stock"],
                               created_at=moment, updated_at=moment)
             s.add(product)

@@ -219,7 +219,16 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), index=True)
-    name: Mapped[str] = mapped_column(String(80))
+    # Brands and kinds: every brand + kind is its own product (its own units, prices, stock
+    # and photo). Products with the same title in the same category are one card in the shop,
+    # where the shopper picks the brand, then the kind (catalog.py).
+    #   title "3-in-1 coffee sachet", brand "Kape Juan", kind "Creamy White"
+    # name is all three together ("3-in-1 coffee sachet - Kape Juan Creamy White"), made by
+    # catalog.compose_name; orders, receipts and the stock history copy it.
+    title: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    brand: Mapped[str] = mapped_column(String(40), default="", server_default="")
+    kind: Mapped[str] = mapped_column(String(40), default="", server_default="")
+    name: Mapped[str] = mapped_column(String(170))
     description: Mapped[str] = mapped_column(Text, default="")
     is_active: Mapped[bool] = mapped_column(default=True)  # hidden from shoppers when off
     stock_pieces: Mapped[int] = mapped_column(default=0)
@@ -247,6 +256,16 @@ class Product(Base):
     @property
     def available_pieces(self):
         return self.stock_pieces - self.reserved_pieces
+
+    @property
+    def group_title(self):
+        """The shop card's title: the title, or the whole name for a product without brands or kinds."""
+        return self.title or self.name
+
+    @property
+    def variant_label(self):
+        """"Kape Juan Creamy White", or "" for a product with no brand or kind."""
+        return " ".join(part for part in (self.brand, self.kind) if part)
 
     @property
     def active_units(self):
@@ -446,7 +465,7 @@ class OrderLine(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), index=True)
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("product_units.id", ondelete="SET NULL"))
-    product_name: Mapped[str] = mapped_column(String(80))
+    product_name: Mapped[str] = mapped_column(String(170))
     unit_name: Mapped[str] = mapped_column(String(40))
     pieces_per_unit: Mapped[int]
     quantity: Mapped[int]
@@ -670,7 +689,7 @@ class WalkinLine(Base):
     sale_id: Mapped[int] = mapped_column(ForeignKey("walkin_sales.id", ondelete="CASCADE"), index=True)
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"))
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("product_units.id", ondelete="SET NULL"))
-    product_name: Mapped[str] = mapped_column(String(80))
+    product_name: Mapped[str] = mapped_column(String(170))
     unit_name: Mapped[str] = mapped_column(String(40))
     pieces_per_unit: Mapped[int]
     quantity: Mapped[int]

@@ -13,7 +13,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 - See the products by category, search, and sort by name, price or newest.
 - Choose the **brand** and the **kind** (like Original or Creamy White) of a product. Each one has its own price and stock.
 - Not in the list? **Ask for it**: type the brand or kind you want, the size and how many. The cashier checks if the store has it and gives the price before you pay.
-- See every way to buy it (a sachet, a box of 30) and the price of one piece, and whether it is in stock.
+- Choose the size in **Available in** (like Sachet, Pack of 10 or Box of 30: the store types these), see its price, pick how many and add it to the cart.
 - Put products in a cart and check out: **pickup** at the store, or **delivery** to your barangay (each barangay has its own fee).
 - Pay in cash (at the counter, or to the rider), or **pay online** after the cashier prices the order.
 - Type a **voucher code** at checkout (like SUKI50) for pesos off, percent off, or free delivery.
@@ -31,7 +31,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 - Sells to walk-in customers at the **Counter**: type a name or scan a barcode, choose retail or wholesale, type the cash given, see the change, and print the receipt. A mistake can be voided.
 - Opens a **shift** with the cash in the drawer and closes it with a count. The store sees if the drawer has more or less than it should.
 - Adds new stock (**Restock**) and saves **stock counts**. Every change is in the **Stock History**.
-- Sees all products, stock and wholesale prices, but can't change products or prices.
+- Adds and changes products, brands, kinds, sizes, prices, photos and categories, like the owner. Everything shoppers see is typed by the owner or a cashier.
 
 **The rider:**
 
@@ -40,8 +40,8 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 
 **The owner** does everything the cashier does, and also:
 
-- Adds products with photos and units (like "Piece", "Pack of 6" or "Case of 24"), with a **retail** and a **wholesale** price for each unit. Many products can come at once from a spreadsheet (**Import from a file**).
-- Gives a product brands and kinds: the same product name with another brand or kind shows as **one card** in the shop. **Add another kind** copies a product with its sizes and prices, so only the brand, kind and stock need typing.
+- (With the cashier) adds products with photos and sizes (like "Sachet", "Pack of 6" or "Case of 24"), with a **retail** and a **wholesale** price for each size. Many products can come at once from a spreadsheet (**Import from a file**).
+- (With the cashier) gives a product brands and kinds: the same product name with another brand or kind shows as **one card** in the shop. **Add another kind** copies a product with its sizes and prices, so only the brand, kind and stock need typing.
 - Sets up the store: details and opening hours, **Delivery Areas** and their fees, **Staff** (a one-time invite link for each cashier and rider), and **Promos** (voucher codes).
 - Sees **Insights** for the last 7, 30 or 90 days: sales per day (online and counter), the best sellers, how people paid, how much sold at the wholesale price, and what is running low.
 

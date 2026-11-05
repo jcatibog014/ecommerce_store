@@ -90,7 +90,8 @@ def test_old_demos_are_deleted_with_everything_in_them(app, demo):
 def test_view_as_plays_every_role(app, demo):
     assert view_as(demo, "cashier") == "/manage/orders"
     assert demo.get("/manage/products").status_code == 200
-    assert demo.get("/manage/products/new").status_code == 403  # a cashier can't add products
+    assert demo.get("/manage/products/new").status_code == 200  # a cashier adds products too
+    assert demo.get("/manage/staff").status_code == 403  # but staff are the owner's
     assert view_as(demo, "owner") == "/manage/orders"
     assert demo.get("/manage/products/new").status_code == 200
     assert demo.get("/manage/staff").status_code == 200
@@ -190,7 +191,7 @@ def test_a_product_page_and_a_category_page(app, demo):
         water = s.scalar(select(Product).where(Product.store_id == store.id, Product.name == "Bottled water 500 mL"))
         drinks = water.category_id
     page = demo.get(f"/products/{water.id}").get_data(as_text=True)
-    assert "Case of 24" in page and "₱300.00" in page
+    assert ">Case of 24</a>" in page and "₱15.00" in page
     page = demo.get(f"/products?category={drinks}").get_data(as_text=True)
     assert "<h1>Drinks</h1>" in page and "Cola 1.5 L" in page
 

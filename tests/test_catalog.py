@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import select
 
 from dfjc import catalog, db
 from dfjc.dates import utcnow
@@ -124,15 +125,38 @@ def test_pages_of_24(client, store_id):
     assert "Item 24" in second and "Item 29" in second
 
 
-def test_the_product_page_shows_every_unit_and_the_price_per_piece(client, store_id):
+def test_the_product_page_has_available_in_choices(app, client, store_id):
     product_id = add_product(client.application, store_id, "Bottled water 500 mL",
                              units=(("Bottle", 1, 1500, 1300), ("Case of 24", 24, 30000, 27600)))
+    with app.app_context():
+        from dfjc.models import ProductUnit
+        case = db.session().scalar(select(ProductUnit.id).where(ProductUnit.name == "Case of 24"))
     page = client.get(f"/products/{product_id}").get_data(as_text=True)
-    assert "Case of 24" in page and "(24 pieces)" in page
-    assert "₱300.00" in page and "₱12.50" in page  # 300 / 24 each
+    # Every size is a choice; the smallest one is chosen first.
+    assert "Available In" in page and ">Bottle</a>" in page and ">Case of 24</a>" in page
+    assert "₱15.00" in page and "₱300.00" not in page
+    page = client.get(f"/products/{product_id}?size={case}").get_data(as_text=True)
+    assert "₱300.00" in page and "24 pieces, ₱12.50 each" in page  # 300 / 24 each
+    assert f'size={case}" aria-current="true"' in page
     # Shoppers never see the wholesale price: the cashier gives it.
-    assert "₱276.00" not in page and "₱13.00" not in page
+    assert "₱276.00" not in page
     assert "cashier checks every order" in page
+
+
+def test_a_product_without_a_photo_has_no_picture_and_the_buy_box_on_the_right(client, store_id):
+    product_id = add_product(client.application, store_id, "Soy sauce 1 L")
+    page = client.get(f"/products/{product_id}").get_data(as_text=True)
+    assert 'class="product-side"' in page and "product-visual" not in page and "<svg viewBox=\"0 0 48 48\"" not in page
+
+
+def test_a_size_from_another_product_is_ignored(app, client, store_id):
+    first = add_product(app, store_id, "Water", units=(("Bottle", 1, 1500, 1300),))
+    add_product(app, store_id, "Cola", units=(("Bottle", 1, 7500, 7000),))
+    from dfjc.models import ProductUnit
+    with app.app_context():
+        cola_unit = db.session().scalar(select(ProductUnit.id).where(ProductUnit.retail_price == 7500))
+    page = client.get(f"/products/{first}?size={cola_unit}").get_data(as_text=True)
+    assert "₱15.00" in page and "₱75.00" not in page
 
 
 def test_stock_words(app, store_id):

@@ -18,7 +18,7 @@
     </div>
     <p class="page-sub">{{ product.available_pieces|pieces }} left{% if product.reserved_pieces %} ({{ product.reserved_pieces|pieces }} held for orders){% endif %}. {{ stock_pill(product) }}</p>
   </div>
-  {% if locked %}<p class="note">Only the owner can change products and prices. You can see the wholesale prices here.</p>{% endif %}
+  {% if locked %}<p class="note">Only a cashier or the owner can change products and prices.</p>{% endif %}
 
   <div class="product-admin">
     <form method="post" class="card" data-watch-changes>

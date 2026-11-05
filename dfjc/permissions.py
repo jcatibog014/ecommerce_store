@@ -2,8 +2,8 @@
 
 | Role    | Can do                                                               |
 |---------|----------------------------------------------------------------------|
-| Owner   | everything: products, prices, staff, store details                   |
-| Cashier | see products and stock; price orders (retail or wholesale), cancel   |
+| Owner   | everything: also staff, store details, delivery areas, promos, Insights |
+| Cashier | products, sizes, prices and stock; orders, packing, the counter      |
 | Rider   | My Deliveries: delivered or nobody home, cash on delivery            |
 | Shopper | browse, cart, checkout, order history                                |
 
@@ -20,7 +20,7 @@ from .models import CASHIER, OWNER, RIDER, ROLES, SHOPPER
 VIEW_AS_ROLES = (SHOPPER, CASHIER, RIDER, OWNER)
 
 # What each kind of work needs.
-MANAGE_PRODUCTS = (OWNER,)  # add and edit products, units, prices, photos, categories
+MANAGE_PRODUCTS = (OWNER, CASHIER)  # add and edit products, sizes, prices, photos, brands, kinds, categories
 SEE_PRODUCTS = (OWNER, CASHIER)  # the staff product list with stock
 MANAGE_STAFF = (OWNER,)
 MANAGE_STORE = (OWNER,)  # store details and delivery areas
@@ -31,7 +31,7 @@ PACK_ORDERS = (OWNER, CASHIER)  # packing, pickup, sending out with a rider
 SEE_DELIVERIES = (OWNER, CASHIER, RIDER)  # a rider sees and finishes only their own
 RECEIVE_CASH = (OWNER, CASHIER)  # the rider's cash-on-delivery money
 MANAGE_STOCK = (OWNER, CASHIER)  # restock and stock counts
-IMPORT_PRODUCTS = (OWNER,)
+IMPORT_PRODUCTS = (OWNER, CASHIER)
 COUNTER = (OWNER, CASHIER)  # walk-in sales and the cash shift
 SEE_INSIGHTS = (OWNER,)  # sales, best sellers, how people paid
 

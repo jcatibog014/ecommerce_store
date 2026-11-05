@@ -56,8 +56,13 @@ def product(product_id):
     # The other brands and kinds with the same title: the shopper picks one, which opens its page.
     variants = catalog.siblings(s, g.store, item)
     brands, kinds = catalog.choices(item, variants)
+    # "Available in": the size chosen in the address (?size=), else the smallest one that can be bought.
+    units = item.active_units
+    chosen = next((unit for unit in units if unit.id == request.args.get("size", type=int)), None)
+    if chosen is None:
+        chosen = next((unit for unit in units if unit.can_buy), units[0] if units else None)
     return render_template("shop/product.html", product=item, saved=saved, variants=variants, brands=brands,
-                           kinds=kinds)
+                           kinds=kinds, chosen=chosen)
 
 
 def photo_response(photo_id, field):

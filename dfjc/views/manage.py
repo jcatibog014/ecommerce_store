@@ -54,7 +54,7 @@ def products():
 
 
 @bp.route("/products/new", methods=["GET", "POST"])
-@needs(MANAGE_PRODUCTS, "Only the owner can add products.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can add products.")
 def new_product():
     s = db.session()
     categories = catalog.categories(s, g.store)
@@ -105,7 +105,7 @@ def product(product_id):
     values = None
     if request.method == "POST":
         if not can(MANAGE_PRODUCTS):
-            abort(403, "Only the owner can change products.")
+            abort(403, "Only a cashier or the owner can change products.")
         # Stock isn't on this form: it changes with Restock and Count, which keep its history.
         values, errors = catalog.read_product_form(request.form, categories, with_stock=False)
         if request.form.get("version") != str(item.version):
@@ -190,7 +190,7 @@ def stock_history():
 # ---------- Adding many products from a CSV file ----------
 
 @bp.route("/products/import", methods=["GET", "POST"])
-@needs(IMPORT_PRODUCTS, "Only the owner can import products.")
+@needs(IMPORT_PRODUCTS, "Only a cashier or the owner can import products.")
 def import_products():
     s = db.session()
     if request.method == "GET":
@@ -224,7 +224,7 @@ def import_template():
 
 
 @bp.post("/products/<int:product_id>/units")
-@needs(MANAGE_PRODUCTS, "Only the owner can change prices.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change prices.")
 def add_unit(product_id):
     s = db.session()
     item = get_product(product_id)
@@ -244,7 +244,7 @@ def add_unit(product_id):
 
 
 @bp.post("/products/<int:product_id>/units/<int:unit_id>")
-@needs(MANAGE_PRODUCTS, "Only the owner can change prices.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change prices.")
 def save_unit(product_id, unit_id):
     s = db.session()
     item = get_product(product_id)
@@ -266,7 +266,7 @@ def save_unit(product_id, unit_id):
 
 
 @bp.post("/products/<int:product_id>/units/<int:unit_id>/delete")
-@needs(MANAGE_PRODUCTS, "Only the owner can change prices.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change prices.")
 def delete_unit(product_id, unit_id):
     s = db.session()
     item = get_product(product_id)
@@ -278,7 +278,7 @@ def delete_unit(product_id, unit_id):
 
 
 @bp.post("/products/<int:product_id>/photo")
-@needs(MANAGE_PRODUCTS, "Only the owner can change photos.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change photos.")
 def upload_photo(product_id):
     not_for_demo("The demo can't upload photos. In your own store, the owner adds them here.")
     s = db.session()
@@ -303,7 +303,7 @@ def upload_photo(product_id):
 
 
 @bp.post("/products/<int:product_id>/photo/delete")
-@needs(MANAGE_PRODUCTS, "Only the owner can change photos.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change photos.")
 def delete_photo(product_id):
     s = db.session()
     item = get_product(product_id)
@@ -324,7 +324,7 @@ def categories():
     values = {"icon": "box", "sort_order": 0}
     if request.method == "POST":
         if not can(MANAGE_PRODUCTS):
-            abort(403, "Only the owner can change categories.")
+            abort(403, "Only a cashier or the owner can change categories.")
         values, errors = catalog.read_category_form(request.form)
         if not errors:
             try:
@@ -344,7 +344,7 @@ def categories():
 
 
 @bp.post("/categories/<int:category_id>")
-@needs(MANAGE_PRODUCTS, "Only the owner can change categories.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change categories.")
 def save_category(category_id):
     s = db.session()
     category = get_in_store(s, Category, category_id, g.store)
@@ -365,7 +365,7 @@ def save_category(category_id):
 
 
 @bp.post("/categories/<int:category_id>/delete")
-@needs(MANAGE_PRODUCTS, "Only the owner can change categories.")
+@needs(MANAGE_PRODUCTS, "Only a cashier or the owner can change categories.")
 def delete_category(category_id):
     s = db.session()
     category = get_in_store(s, Category, category_id, g.store)

@@ -153,7 +153,7 @@ def test_the_demo_has_brands_and_kinds(app):
         coffee_id = db.session().scalar(select(Product.id).where(Product.kind == "Creamy White",
                                                                  Product.title == "3-in-1 coffee sachet"))
     product_page = demo.get(f"/products/{coffee_id}").get_data(as_text=True)
-    assert "Barako Gold" in product_page and "product-banner" in product_page
+    assert "Barako Gold" in product_page and 'class="product-side"' in product_page
 
 
 def test_a_photo_fills_the_right_side(app, owner, store_id):
@@ -164,4 +164,5 @@ def test_a_photo_fills_the_right_side(app, owner, store_id):
     post(owner, f"/manage/products/{product_id}/photo", {"photo": (io.BytesIO(picture.getvalue()), "w.png")},
          content_type="multipart/form-data")
     page = owner.get(f"/products/{product_id}").get_data(as_text=True)
-    assert 'class="product-visual"' in page and "product-banner" not in page
+    assert 'class="product-visual"' in page and 'class="product-side"' not in page
+    assert "Available In" in page  # the buy box moves to the left, under the details

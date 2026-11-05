@@ -334,8 +334,10 @@ def test_an_import_needs_the_columns(app, owner):
     assert "Missing: name, unit, pieces, retail" in response.get_data(as_text=True)
 
 
-def test_import_is_for_the_owner(client, cashier_id):
+def test_import_is_for_staff_who_keep_products(client, cashier_id, rider_id):
     log_in_as(client, cashier_id)
+    assert client.get("/manage/products/import").status_code == 200
+    log_in_as(client, rider_id)
     assert client.get("/manage/products/import").status_code == 403
 
 

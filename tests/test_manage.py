@@ -42,16 +42,27 @@ def test_shoppers_and_riders_cant_open_staff_pages(client, shopper_id, rider_id,
         assert client.get(url).status_code == 403
 
 
-def test_a_cashier_sees_products_but_cant_change_them(app, client, cashier_id, store_id):
+def test_a_cashier_keeps_products_too(app, client, cashier_id, store_id):
+    """The owner or the cashier types every product, size and price; staff and the store stay the owner's."""
     product_id = add_product(app, store_id, "Rice", units=(("Kilo", 1, 5200, 5000),))
     log_in_as(client, cashier_id)
-    assert client.get("/manage/products").status_code == 200
     page = client.get(f"/manage/products/{product_id}").get_data(as_text=True)
-    assert "Only the owner can change products" in page and "₱" in page and "50.00" in page  # wholesale shown
-    assert client.get("/manage/products/new").status_code == 403
-    assert post(client, f"/manage/products/{product_id}", {"name": "x", "version": "1"}).status_code == 403
-    assert post(client, f"/manage/products/{product_id}/units", {"new_name": "Sack"}).status_code == 403
+    assert "Only a cashier or the owner" not in page and "Add another kind" in page
+    assert client.get("/manage/products/new").status_code == 200
+    response = post(client, f"/manage/products/{product_id}/units", {
+        "new_name": "Sack of 25 kg", "new_pieces_per_unit": "25", "new_retail_price": "1250"})
+    assert response.status_code == 302
+    assert post(client, "/manage/categories", {"name": "Rice", "icon": "rice", "sort_order": "0"}).status_code == 302
     assert client.get("/manage/staff").status_code == 403
+    assert client.get("/manage/store").status_code == 403
+
+
+def test_riders_and_shoppers_cant_change_products(client, rider_id, shopper_id, store_id):
+    product_id = add_product(client.application, store_id, "Rice")
+    for user_id in (rider_id, shopper_id):
+        log_in_as(client, user_id)
+        assert client.get("/manage/products/new").status_code == 403
+        assert post(client, f"/manage/products/{product_id}/units", {"new_name": "Sack"}).status_code == 403
 
 
 # ---------- Products ----------

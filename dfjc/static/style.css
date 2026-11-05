@@ -582,20 +582,29 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.75rem; }
 
 /* The product page */
-/* The details on the left, the photo (or a category banner) filling the right. */
+/* With a photo: details and the buy box on the left, the photo on the right.
+   Without one: no picture; the buy box fills the right side. */
 .product-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem 2.5rem; align-items: start; }
 .product-visual { order: -1; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--rule); box-shadow: var(--shadow); }
 .product-visual .product-photo { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
-.product-banner { display: none; }
 @container main (min-width: 50rem) {
   .product-page { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .product-visual { order: 0; position: sticky; top: 1rem; }
-  .product-banner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; min-height: 24rem; padding: 2rem; text-align: center; border: 0; }
+  .product-side { position: sticky; top: 1rem; }
 }
-.banner-icon svg { width: 6rem; height: 6rem; opacity: .9; }
-.banner-title { margin-top: .5rem; font-family: var(--headline); font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
-.banner-variant { font-size: 1.1rem; font-weight: 600; }
-.banner-note { font-size: .9rem; opacity: .85; }
+/* The buy box: Available in, the price, how many, Add to cart. */
+.buy-box { margin: 1.25rem 0 0; border-top: 5px solid var(--accent); }
+.product-side .buy-box { margin: 0; }
+.buy-box h2 { margin-bottom: .6rem; font-size: 1.05rem; }
+.size-chips { margin-bottom: .9rem; }
+.only-size { margin: 0 0 .5rem; font-weight: 700; }
+.buy-price { margin: 0; }
+.buy-price .price { font-size: 1.9rem; }
+.buy-each { margin: .1rem 0 0; color: var(--ink-soft); font-size: .92rem; }
+.buy-form { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: .6rem; align-items: end; margin: 1rem 0 0; }
+.buy-form .button { min-height: var(--control-height); }
+.buy-box .stock { margin-top: 1rem; }
+.buy-note { margin: 1rem 0 0; padding-top: .75rem; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: .86rem; }
 .product-page-info h1 { margin-bottom: .2rem; }
 .product-variant { margin: 0 0 .9rem; font-size: 1.15rem; font-weight: 600; color: var(--ink-soft); }
 /* Brand and Kind: chips; the chosen one is filled, a kind that is out of stock is crossed out. */

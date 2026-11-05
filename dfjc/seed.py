@@ -145,9 +145,11 @@ def fill(s, store, moment):
 
 def person(s, store, name, email, role, mobile, moment, days_ago):
     """A sample person nobody can log in as (their password is random and never shown)."""
+    # A random session_version: SQLite gives a deleted demo's ids to the next demo, so an old
+    # demo cookie (user id + version 1) could otherwise open a new visitor's demo.
     user = User(store_id=store.id, name=name, email=email, role=role, mobile=mobile,
                 password_hash=generate_password_hash(secrets.token_urlsafe(16), method="pbkdf2:sha256:1000"),
-                created_at=moment - timedelta(days=days_ago))
+                session_version=secrets.randbelow(10**9) + 2, created_at=moment - timedelta(days=days_ago))
     user.store = store
     s.add(user)
     s.flush()

@@ -238,3 +238,22 @@ def test_the_demo_holds_stock_for_its_open_orders(app, demo):
                     for product in s.scalars(select(Product).where(Product.store_id == store.id))
                     if product.reserved_pieces}
     assert reserved == held
+
+
+def test_an_old_demo_cookie_never_opens_the_next_demo(app, demo):
+    """SQLite gives a deleted demo's ids to the next demo. The old cookie must not open it."""
+    from .conftest import is_logged_in
+    old = demo_store(app)
+    with demo.session_transaction() as session:
+        old_cookie = dict(session)
+    with app.app_context():
+        db.session().get(Store, old.id).demo_expires_at = utcnow() - timedelta(minutes=1)
+        db.session().commit()
+    newcomer = app.test_client()
+    with newcomer.session_transaction() as session:
+        session["csrf"] = "x"
+    post(newcomer, "/demo")  # deletes the old demo; the new one may get the same ids
+    stale = app.test_client()
+    with stale.session_transaction() as session:
+        session.update(old_cookie)
+    assert not is_logged_in(stale)

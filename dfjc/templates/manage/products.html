@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, product_picture %}
+{% block title %}Products - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Products</h1>
+    {% if can(MANAGE_PRODUCTS) %}<div class="actions"><a class="button" href="{{ url_for('manage.new_product') }}">Add product</a></div>{% endif %}
+  </div>
+
+  <nav class="tabs" aria-label="Which products">
+    {% for value, label in shows.items() %}
+      <a href="{{ url_for('manage.products', show=value if value != 'all' else None, q=q or None, category=category) }}"{% if show == value %} aria-current="page"{% endif %}>
+        {{ label }}{% if value == 'low' and low_count %} <span class="badge badge-warn">{{ low_count }}</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+
+  <form class="toolbar" method="get" data-filters>
+    {% if show != 'all' %}<input type="hidden" name="show" value="{{ show }}">{% endif %}
+    <label class="field">
+      <span class="field-label">Search</span>
+      <input type="search" name="q" value="{{ q }}" maxlength="80" placeholder="Product name">
+    </label>
+    <label class="field">
+      <span class="field-label">Category</span>
+      <select name="category">
+        <option value="">Every category</option>
+        {% for c in categories %}<option value="{{ c.id }}"{% if category == c.id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="button button-quiet" type="submit">Show</button>
+  </form>
+
+  {% if products %}
+    <div class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col" class="col-product">Product</th>
+            <th scope="col">Units and retail prices</th>
+            <th scope="col" class="num">Pieces left</th>
+            <th scope="col">Shown to shoppers</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+            <tr data-href="{{ url_for('manage.product', product_id=p.id) }}">
+              <th scope="row" class="col-product">
+                <span class="row-product">
+                  <span class="row-picture">{{ product_picture(p) }}</span>
+                  <span><a class="row-link" href="{{ url_for('manage.product', product_id=p.id) }}">{{ p.name }}</a>
+                    <span class="row-sub">{{ p.category.name if p.category else 'No category' }}</span></span>
+                </span>
+              </th>
+              <td>
+                {% if p.units %}
+                  <ul class="unit-list">{% for u in p.units %}<li{% if not u.is_active %} class="is-off"{% endif %}>{{ u.name }} <strong>{{ u.retail_price|peso }}</strong></li>{% endfor %}</ul>
+                {% else %}<span class="warn-text">No units yet</span>{% endif %}
+              </td>
+              <td class="num">
+                {{ '{:,}'.format(p.available_pieces) }}
+                {% if p.available_pieces == 0 %}<span class="stock stock-out">Out</span>{% elif p.is_low %}<span class="stock stock-low">Low</span>{% endif %}
+              </td>
+              <td>{% if p.is_active and p.active_units %}<span class="pill pill-on">On</span>{% else %}<span class="pill pill-off">Off</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif q or category or show != 'all' %}
+    {{ empty('Nothing Here', 'No product matches. Try another word or category.', url_for('manage.products'), 'Show all products') }}
+  {% else %}
+    {{ empty('No Products Yet', 'Add the first product, with its units and prices.', url_for('manage.new_product') if can(MANAGE_PRODUCTS) else None, 'Add product') }}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% block title %}Join the Staff - {{ APP_NAME }}{% endblock %}
+{% block body_class %}welcome-layout{% endblock %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+  <div class="welcome">
+    {% include "_welcome.html" %}
+    <section class="welcome-cards">
+      <div class="card">
+        {% if not link %}
+          <h1>This Link Doesn't Work</h1>
+          <p class="card-note">It was already used, it was cancelled, or it is more than 7 days old. Ask the owner for a new one.</p>
+        {% elif logged_in %}
+          <h1>Join the Staff</h1>
+          <p class="card-note">You are logged in as {{ g.user.email }}. Log out first, then open this link again to make your {{ ROLE_LABELS[link.role]|lower }} login.</p>
+        {% else %}
+          <h1>Join the Staff</h1>
+          <p class="card-note">You were invited to be a <strong>{{ ROLE_LABELS[link.role]|lower }}</strong>. Make your login. You'll use it every time you work.</p>
+          <form method="post" class="stack">
+            {{ csrf() }}
+            {{ field('name', 'Your name', values.name, errors.name, attrs='autocomplete="name" required autofocus maxlength="80"') }}
+            {{ field('email', 'Email', values.email, errors.email, type='email', attrs='autocomplete="email" required') }}
+            {{ field('mobile', 'Mobile number', values.mobile, errors.mobile, type='tel', attrs='autocomplete="tel" inputmode="tel" placeholder="0917 123 4567" required') }}
+            {{ field('password', 'Password', error=errors.password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required minlength="8"') }}
+            {{ field('confirm_password', 'Password again', type='password', attrs='autocomplete="new-password" required') }}
+            <button class="button" type="submit">Make my login</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

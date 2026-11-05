@@ -1,0 +1,99 @@
+{# Small building blocks used by many pages. #}
+{% from "_icons.html" import category_icon %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro field(name, label, value='', error=None, type='text', hint=None, attrs='') %}
+  <label class="field{% if error %} has-error{% endif %}">
+    <span class="field-label">{{ label }}{% if hint %} <span class="hint">{{ hint }}</span>{% endif %}</span>
+    <input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {{ attrs|safe }}
+           {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+    {% if error %}<p class="field-error" id="{{ name }}-error">{{ error }}</p>{% endif %}
+  </label>
+{% endmacro %}
+
+{# A peso amount: the ₱ sits inside the box, so people type only the number. #}
+{% macro money_field(name, label, value=None, error=None, hint=None, attrs='') %}
+  <label class="field{% if error %} has-error{% endif %}">
+    <span class="field-label">{{ label }}{% if hint %} <span class="hint">{{ hint }}</span>{% endif %}</span>
+    <span class="money-input"><span aria-hidden="true">₱</span>
+      <input type="text" inputmode="decimal" name="{{ name }}" value="{{ value|plain_peso if value is defined and value is not none else '' }}" {{ attrs|safe }}
+             {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}></span>
+    {% if error %}<p class="field-error" id="{{ name }}-error">{{ error }}</p>{% endif %}
+  </label>
+{% endmacro %}
+
+{% macro textarea(name, label, value='', error=None, hint=None, rows=4, attrs='') %}
+  <label class="field{% if error %} has-error{% endif %}">
+    <span class="field-label">{{ label }}{% if hint %} <span class="hint">{{ hint }}</span>{% endif %}</span>
+    <textarea name="{{ name }}" rows="{{ rows }}" {{ attrs|safe }}
+              {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>{{ value or '' }}</textarea>
+    {% if error %}<p class="field-error" id="{{ name }}-error">{{ error }}</p>{% endif %}
+  </label>
+{% endmacro %}
+
+{# options: a list of (value, label) pairs. #}
+{% macro select(name, label, options, selected='', error=None, hint=None, attrs='') %}
+  <label class="field{% if error %} has-error{% endif %}">
+    <span class="field-label">{{ label }}{% if hint %} <span class="hint">{{ hint }}</span>{% endif %}</span>
+    <select name="{{ name }}" {{ attrs|safe }} {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+      {% for value, text in options %}
+        <option value="{{ value }}"{% if value|string == selected|string %} selected{% endif %}>{{ text }}</option>
+      {% endfor %}
+    </select>
+    {% if error %}<p class="field-error" id="{{ name }}-error">{{ error }}</p>{% endif %}
+  </label>
+{% endmacro %}
+
+{% macro pencil_icon() %}
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 20l1-4L16 5a2 2 0 0 1 3 3L8 19z"></path>
+    <line x1="14" y1="7" x2="17" y2="10"></line>
+  </svg>
+{% endmacro %}
+
+{% macro search_icon() %}
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+    <circle cx="10.5" cy="10.5" r="6.5"></circle><line x1="15.5" y1="15.5" x2="20" y2="20"></line>
+  </svg>
+{% endmacro %}
+
+{# The store's mark: a little tindahan with a striped awning, on a solid yellow tile. #}
+{% macro mark() %}
+  <svg class="mark" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+    <rect width="32" height="32" rx="8" fill="currentColor"></rect>
+    <path class="mark-awning" d="M5 7h22v4.5a2.75 2.75 0 0 1-5.5 0a2.75 2.75 0 0 1-5.5 0a2.75 2.75 0 0 1-5.5 0a2.75 2.75 0 0 1-5.5 0z"></path>
+    <path class="mark-shop" d="M8 15.5v10h16v-10M13 25.5v-5.5h6v5.5" fill="none" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></path>
+  </svg>
+{% endmacro %}
+
+{% macro wordmark(href) %}
+  <a class="wordmark" href="{{ href }}">{{ mark() }}<span class="wordmark-name">DFJC<span class="wordmark-store"> Store</span></span></a>
+{% endmacro %}
+
+{# A product's picture: the photo if there is one, else a calm tile with its category's icon. #}
+{% macro product_picture(product, small=True) %}
+  {% set url = photo_url(product, small) %}
+  {% if url %}
+    <img class="product-photo" src="{{ url }}" alt="" loading="lazy" width="400" height="400">
+  {% else %}
+    <span class="product-tile tile-{{ (product.category_id or 0) % 6 }}" aria-hidden="true">{{ category_icon(product.icon) }}</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro stock_pill(product) %}
+  {% set kind, words = stock_word(product) %}
+  <span class="stock stock-{{ kind }}">{{ words }}</span>
+{% endmacro %}
+
+{# A role's pill. The name is always written, so colour is never the only sign. #}
+{% macro role_pill(role) %}<span class="pill pill-{{ role }}">{{ ROLE_LABELS[role] }}</span>{% endmacro %}
+
+{# A row of the empty kind: a title and one sentence, never a stand-in picture. #}
+{% macro empty(title, text, button_href=None, button_text=None) %}
+  <div class="empty-state">
+    <h2>{{ title }}</h2>
+    <p>{{ text }}</p>
+    {% if button_href %}<a class="button" href="{{ button_href }}">{{ button_text }}</a>{% endif %}
+  </div>
+{% endmacro %}

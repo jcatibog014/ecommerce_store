@@ -1,0 +1,15 @@
+{# One thin bar above everything in the demo: what this is, and View As to play each role. #}
+{% from "_macros.html" import csrf %}
+<div class="demo-bar">
+  <p><strong>Demo store.</strong> <span class="demo-bar-more">Yours alone, deleted after 2 hours.</span></p>
+  <form method="post" action="{{ url_for('auth.view_as') }}" class="view-as">
+    {{ csrf() }}
+    <label for="view-as">View as</label>
+    <select name="role" id="view-as" data-auto-submit>
+      {% for role in VIEW_AS_ROLES %}
+        <option value="{{ role }}"{% if g.role == role %} selected{% endif %}>{{ ROLE_LABELS[role] }}</option>
+      {% endfor %}
+    </select>
+    <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Switch</button>
+  </form>
+</div>

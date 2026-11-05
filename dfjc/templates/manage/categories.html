@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, select, empty %}
+{% from "_icons.html" import category_icon %}
+{% block title %}Categories - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% set locked = '' if can(MANAGE_PRODUCTS) else 'disabled' %}
+  <div class="page-head">
+    <h1>Categories</h1>
+    <p class="page-sub">The shelves shoppers browse. Lower numbers come first.</p>
+  </div>
+  {% set icon_options = icons.items()|list %}
+
+  <fieldset class="plain-fieldset" {{ locked }}>
+    {% if categories %}
+      <div class="card category-rows">
+        <div class="category-row category-row-head" aria-hidden="true">
+          <span></span><span>Name</span><span>Picture</span><span>Order</span><span></span><span></span>
+        </div>
+        {% for c in categories %}
+          <form method="post" action="{{ url_for('manage.save_category', category_id=c.id) }}" class="category-row">
+            {{ csrf() }}
+            <span class="shelf-icon tile-{{ c.id % 6 }}">{{ category_icon(c.icon) }}</span>
+            {{ field('name', 'Name', c.name, attrs='required maxlength="60"') }}
+            {{ select('icon', 'Picture', icon_options, c.icon) }}
+            {{ field('sort_order', 'Order', c.sort_order, attrs='inputmode="numeric"') }}
+            <span class="category-count muted">{{ counts.get(c.id, 0) }} {{ 'product' if counts.get(c.id, 0) == 1 else 'products' }}</span>
+            <div class="unit-actions">
+              <button class="button button-small button-quiet" type="submit">Save</button>
+              <button class="button button-small button-danger" type="submit" formaction="{{ url_for('manage.delete_category', category_id=c.id) }}" formnovalidate
+                      data-confirm-button="Remove the category {{ c.name }}? Its products stay in the store, without a category.">Remove</button>
+            </div>
+          </form>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ empty('No Categories Yet', 'Categories are the shelves shoppers browse, like Drinks or Canned Goods.') }}
+    {% endif %}
+
+    <form method="post" class="card stack narrow-form">
+      {{ csrf() }}
+      <h2>Add a Category</h2>
+      <div class="form-grid">
+        {{ field('name', 'Name', values.name, errors.name, attrs='required maxlength="60" placeholder="Frozen"') }}
+        {{ select('icon', 'Picture', icon_options, values.icon) }}
+        {{ field('sort_order', 'Order', values.sort_order, errors.sort_order, attrs='inputmode="numeric"') }}
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Add category</button></div>
+    </form>
+  </fieldset>
+{% endblock %}

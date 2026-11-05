@@ -1,0 +1,14 @@
+{% from "_macros.html" import field, select, textarea %}
+{# The product's own details, used by the New Product and product pages. #}
+{% macro product_fields(values, errors, categories) %}
+  {{ field('name', 'Name', values.name, errors.name, hint='With the size, like "Soy sauce 1 L"', attrs='required maxlength="80"') }}
+  {% set options = [('', 'No category')] %}
+  {% for c in categories %}{% set _ = options.append((c.id, c.name)) %}{% endfor %}
+  {{ select('category_id', 'Category', options, values.category_id or '', errors.category_id) }}
+  {{ textarea('description', 'Description', values.description, errors.description, hint='Optional', rows=3, attrs='maxlength="1000"') }}
+  <div class="form-grid">
+    {{ field('stock_pieces', 'Pieces in stock', values.stock_pieces, errors.stock_pieces, hint='Count single pieces', attrs='inputmode="numeric" required') }}
+    {{ field('low_stock_pieces', 'Warn when this low', values.low_stock_pieces, errors.low_stock_pieces, hint='Pieces; 0 = never', attrs='inputmode="numeric"') }}
+  </div>
+  <label class="check"><input type="checkbox" name="is_active" value="1"{% if values.is_active %} checked{% endif %}> Show to shoppers</label>
+{% endmacro %}

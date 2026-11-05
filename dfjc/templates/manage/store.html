@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea %}
+{% block title %}Store Details - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Store Details</h1>
+    <p class="page-sub">Shoppers see these on the home page and at the bottom of every page.</p>
+  </div>
+  <form method="post" class="card stack narrow-form" data-watch-changes>
+    {{ csrf() }}
+    {{ field('name', "Store's name", values.name, errors.name, attrs='required maxlength="80"') }}
+    {{ field('tagline', 'One line about the store', values.tagline, errors.tagline, attrs='maxlength="160"') }}
+    {{ textarea('address', 'Address', values.address, errors.address, rows=2, attrs='maxlength="300"') }}
+    <div class="form-grid">
+      {{ field('phone', 'Phone', values.phone, errors.phone, type='tel', attrs='maxlength="40"') }}
+      {{ field('hours', 'Opening hours', values.hours, errors.hours, attrs='maxlength="300" placeholder="Every day, 6:00 AM to 9:00 PM"') }}
+    </div>
+    {{ textarea('pickup_note', 'For pickup orders', values.pickup_note, errors.pickup_note, hint='Where and how to pick up', rows=2, attrs='maxlength="500"') }}
+    <div class="form-actions"><button class="button" type="submit">Save details</button></div>
+  </form>
+{% endblock %}

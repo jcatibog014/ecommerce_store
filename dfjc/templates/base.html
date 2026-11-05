@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ g.store.name if g.store else APP_NAME }}{% endblock %}</title>
+  <meta name="description" content="DFJC Store: wholesale and retail sari-sari goods. Order online for pickup or delivery.">
+  <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+  <meta name="theme-color" content="#fbf7ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1612" media="(prefers-color-scheme: dark)">
+  {# Before the stylesheet asks for it, so the name and headings don't jump when it arrives. #}
+  <link rel="preload" href="{{ url_for('static', filename='fonts/nunito-800.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {# Before the page draws, so a saved dark theme never flashes white. #}
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+{# Staff work with a menu at the side; shoppers and visitors get the store's header. #}
+{% set staff_layout = g.user and is_staff() %}
+<body class="{% block body_class %}{{ 'app-layout' if staff_layout else 'shop-layout' }}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% block demo_bar %}{% if g.user and g.user.is_demo %}{% include "_demo_bar.html" %}{% endif %}{% endblock %}
+  <div class="frame">
+    {% block header %}{% include "_sidebar.html" if staff_layout else "_shop_header.html" %}{% endblock %}
+
+    <main id="main" class="page {% block page_class %}{% endblock %}">
+      {# Messages after an action. With JavaScript they float as toasts (app.js): good news fades
+         after a few seconds, a problem ("error") stays until closed. Without it, they sit here. #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flashes" role="status" data-flashes>
+            {% for category, message in messages %}
+              <div class="flash{% if category == 'error' %} flash-error{% endif %}" data-flash{% if category == 'error' %} data-stays{% endif %}>
+                <p>{{ message }}</p>
+                <button class="flash-close" type="button" data-flash-close aria-label="Close this message" hidden>&times;</button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% block footer %}
+    {% if not staff_layout and g.store %}
+      <footer class="shop-footer">
+        <div class="shop-footer-inner">
+          <p><strong>{{ g.store.name }}</strong>{% if g.store.address %} · {{ g.store.address }}{% endif %}</p>
+          {% if g.store.hours or g.store.phone %}<p class="muted">{{ g.store.hours }}{% if g.store.hours and g.store.phone %} · {% endif %}{{ g.store.phone }}</p>{% endif %}
+        </div>
+      </footer>
+    {% endif %}
+  {% endblock %}
+</body>
+</html>

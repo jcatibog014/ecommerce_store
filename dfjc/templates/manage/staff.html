@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, role_pill %}
+{% block title %}Staff - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Staff</h1>
+    <p class="page-sub">Cashiers price and take orders. Riders bring deliveries. Each one has their own login.</p>
+  </div>
+
+  {% if new_link %}
+    <section class="card card-highlight">
+      <h2>Send This Link</h2>
+      <p class="card-note">Send it by Messenger or text to the new staff member. It works once, for 7 days. You won't see it again.</p>
+      <input class="copy-line" type="text" value="{{ new_link }}" readonly data-copy-text>
+      <div class="form-actions setting-account-actions"><button class="button" type="button" data-copy-button data-copy-anywhere hidden>Copy link</button></div>
+    </section>
+  {% endif %}
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Contact</th><th scope="col">Can log in</th></tr></thead>
+      <tbody>
+        {% for person in people %}
+          <tr>
+            <th scope="row">{{ person.name }}{% if person.id == g.user.id %} <span class="muted">(you)</span>{% endif %}</th>
+            <td>{{ role_pill(person.role) }}</td>
+            <td><span class="row-sub">{{ person.email }}</span>{% if person.mobile %}<span class="row-sub">{{ person.mobile }}</span>{% endif %}</td>
+            <td>
+              {% if person.role == owner %}
+                <span class="muted">Always</span>
+              {% else %}
+                <form method="post" action="{{ url_for('staff.set_active', user_id=person.id) }}" class="inline-form">
+                  {{ csrf() }}
+                  <input type="hidden" name="active" value="{{ '0' if person.is_active else '1' }}">
+                  {% if person.is_active %}<span class="pill pill-on">Yes</span>{% else %}<span class="pill pill-off">Switched off</span>{% endif %}
+                  <button class="button button-small button-quiet" type="submit">{{ 'Switch off' if person.is_active else 'Switch on' }}</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-2">
+    <form method="post" action="{{ url_for('staff.invite') }}" class="card stack">
+      {{ csrf() }}
+      <h2>Invite Someone</h2>
+      <fieldset class="role-choice">
+        <legend class="field-label">They will be a</legend>
+        <label class="check"><input type="radio" name="role" value="cashier" checked> Cashier</label>
+        <label class="check"><input type="radio" name="role" value="rider"> Rider</label>
+      </fieldset>
+      {{ field('name', 'Who it is for', hint='Optional, so you remember', attrs='maxlength="80" placeholder="Carlo"') }}
+      {% if g.user.is_demo %}<p class="card-note">The demo can't make invite links.</p>{% endif %}
+      <div class="form-actions"><button class="button" type="submit"{% if g.user.is_demo %} disabled{% endif %}>Make invite link</button></div>
+    </form>
+
+    <section class="card">
+      <h2>Invite Links</h2>
+      {% if links %}
+        <ul class="plain-list">
+          {% for link in links %}
+            {% set state = invite_status(link, moment) %}
+            <li class="invite-row">
+              <span>{{ ROLE_LABELS[link.role] }}{% if link.name %}: {{ link.name }}{% endif %}
+                <span class="row-sub">
+                  {% if state == 'used' %}Used by {{ link.used_by.name if link.used_by else 'someone' }} on {{ link.used_at|nice_date }}
+                  {% elif state == 'expired' %}Expired on {{ link.expires_at|nice_date }}
+                  {% else %}Waiting. Works until {{ link.expires_at|nice_date }}{% endif %}
+                </span></span>
+              {% if state == 'open' %}
+                <form method="post" action="{{ url_for('staff.cancel_invite', invite_id=link.id) }}" class="inline-form">
+                  {{ csrf() }}<button class="button button-small button-quiet" type="submit">Cancel link</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="card-note">No invite links yet.</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

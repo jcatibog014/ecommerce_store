@@ -1,0 +1,58 @@
+{% from "_macros.html" import csrf, wordmark %}
+{# The staff menu. It only moves between pages: preferences and Log out are in Settings
+   (and Log out in the account menu at the bottom). Each role sees only its own work. #}
+{% set endpoint = request.endpoint or '' %}
+{% macro link(target, label, active, count=0) %}
+  <li>
+    <a href="{{ url_for(target) }}"{% if active %} aria-current="page"{% endif %}>
+      <span>{{ label }}</span>{% if count %}<span class="badge">{{ count }}<span class="visually-hidden"> waiting</span></span>{% endif %}
+    </a>
+  </li>
+{% endmacro %}
+<aside class="sidebar">
+  <div class="sidebar-top">
+    {{ wordmark(url_for('manage.products') if can(SEE_PRODUCTS) else url_for('shop.home')) }}
+    <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="app-nav" hidden>
+      <span aria-hidden="true">&#9776;</span> Menu
+    </button>
+  </div>
+  <div class="sidebar-menu" id="app-nav">
+    <nav aria-label="Main">
+      {% if can(SEE_PRODUCTS) %}
+        <p class="nav-heading">Catalog</p>
+        <ul class="nav-links">
+          {{ link('manage.products', 'Products', endpoint.startswith('manage.') and 'categor' not in endpoint) }}
+          {{ link('manage.categories', 'Categories', 'categor' in endpoint) }}
+        </ul>
+      {% endif %}
+      {% if can(MANAGE_STAFF) or can(MANAGE_STORE) %}
+        <p class="nav-heading">Store</p>
+        <ul class="nav-links">
+          {% if can(MANAGE_STAFF) %}{{ link('staff.index', 'Staff', endpoint == 'staff.index') }}{% endif %}
+          {% if can(MANAGE_STORE) %}{{ link('staff.store', 'Store Details', endpoint == 'staff.store') }}{% endif %}
+        </ul>
+      {% endif %}
+      <ul class="nav-links nav-links-end">
+        {{ link('shop.home', 'View Store', endpoint.startswith('shop.')) }}
+        {{ link('settings.index', 'Settings', endpoint.startswith('settings.')) }}
+      </ul>
+    </nav>
+    <div class="sidebar-foot">
+      {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
+      <details class="user-menu" data-user-menu>
+        <summary>
+          <span class="avatar" aria-hidden="true">{{ g.user.name[:1]|upper }}</span>
+          <span class="user-menu-name"><span class="visually-hidden">Account menu for </span>{{ g.user.first_name }}
+            <span class="user-menu-role">{{ ROLE_LABELS[g.role] }}</span></span>
+        </summary>
+        <div class="user-menu-items">
+          <a href="{{ url_for('settings.index') }}">Settings</a>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            {{ csrf() }}
+            <button class="link-button" type="submit">Log out</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+</aside>

@@ -88,10 +88,10 @@ def test_old_demos_are_deleted_with_everything_in_them(app, demo):
 
 
 def test_view_as_plays_every_role(app, demo):
-    assert view_as(demo, "cashier") == "/manage/products"
+    assert view_as(demo, "cashier") == "/manage/orders"
     assert demo.get("/manage/products").status_code == 200
     assert demo.get("/manage/products/new").status_code == 403  # a cashier can't add products
-    assert view_as(demo, "owner") == "/manage/products"
+    assert view_as(demo, "owner") == "/manage/orders"
     assert demo.get("/manage/products/new").status_code == 200
     assert demo.get("/manage/staff").status_code == 200
     assert view_as(demo, "rider") == "/"
@@ -125,7 +125,7 @@ def test_the_owner_can_try_changes_in_the_demo_store(app, demo):
     with app.app_context():
         product = db.session().scalar(select(Product).where(Product.store_id == store.id).limit(1))
     response = post(demo, f"/manage/products/{product.id}", {
-        "name": "Renamed in the demo", "category_id": "", "stock_pieces": "5", "low_stock_pieces": "0",
+        "name": "Renamed in the demo", "category_id": "", "stock_pieces": "5000", "low_stock_pieces": "0",
         "is_active": "1", "version": str(product.version)})
     assert response.status_code == 302
     assert "Renamed in the demo" in demo.get("/products").get_data(as_text=True)
@@ -138,6 +138,9 @@ SHOPPER_PAGES = {
     "/products": ["product-card", "Page 1 of 2"],
     "/products?sort=price-low": ["product-card"],
     "/settings/": ["Your Details", "Ana Reyes"],
+    "/cart": ["Bottled water 500 mL", "Instant pancit canton 60 g", "Check out"],
+    "/checkout": ["45 Mabini Street", "San Isidro", "Place order"],
+    "/orders": ["In Progress", "Past Orders", "Waiting for the cashier", "Confirmed", "Cancelled"],
 }
 STAFF_PAGES = {
     "cashier": {
@@ -145,11 +148,16 @@ STAFF_PAGES = {
         "/manage/products?show=low": ["Powdered juice, mango"],
         "/manage/products?show=off": ["Ice candy, buko"],
         "/manage/categories": ["Canned Goods", "Personal Care"],
+        "/manage/orders": ["Marites Santos", "Ramon Garcia", "Ana Reyes", "Has bulk items"],
+        "/manage/orders?tab=confirmed": ["Marites Santos", "Ana Reyes"],
+        "/manage/orders?tab=cancelled": ["Ramon Garcia", "Ana Reyes"],
+        "/manage/orders?tab=all": ["Waiting for the cashier", "Confirmed", "Cancelled"],
     },
     "owner": {
         "/manage/products/new": ["First Unit"],
         "/manage/staff": ["Lorna Cruz", "Jun Dizon", "Used by Jun Dizon", "New cashier for the night shift"],
         "/manage/store": ["123 Rizal Street"],
+        "/manage/delivery-areas": ["San Isidro", "Malinis"],
     },
 }
 
@@ -191,3 +199,40 @@ def test_the_demo_has_an_open_and_a_used_invite(app, demo):
     store = demo_store(app)
     assert count(app, Invite, Invite.store_id == store.id, Invite.used_at.is_(None)) == 1
     assert count(app, Invite, Invite.store_id == store.id, Invite.used_at.is_not(None)) == 1
+
+
+def test_every_demo_order_page_has_its_example(app, demo):
+    """The shopper's three orders, and every order as the cashier sees it."""
+    from dfjc.models import Order
+    store = demo_store(app)
+    with app.app_context():
+        found = db.session().scalars(select(Order).where(Order.store_id == store.id)).all()
+        visitor = db.session().scalar(select(User).where(User.store_id == store.id, User.name == "Ana Reyes"))
+        mine = {order.ref: order.status for order in found if order.user_id == visitor.id}
+        every = {order.ref: order.status for order in found}
+    assert sorted(mine.values()) == ["cancelled", "confirmed", "placed"]
+    words = {"placed": "Waiting for the Cashier", "confirmed": "Priced:", "cancelled": "I ordered the wrong size."}
+    for ref, status in mine.items():
+        assert words[status] in demo.get(f"/orders/{ref}").get_data(as_text=True), ref
+    view_as(demo, "cashier")
+    for ref, status in every.items():
+        page = demo.get(f"/manage/orders/{ref}").get_data(as_text=True)
+        assert ("Price This Order" in page) == (status == "placed"), ref
+
+
+def test_the_demo_holds_stock_for_its_open_orders(app, demo):
+    """Open orders hold their pieces; cancelled ones gave them back."""
+    from dfjc import orders as order_rules
+    from dfjc.models import Order
+    store = demo_store(app)
+    with app.app_context():
+        s = db.session()
+        held = {}
+        for order in s.scalars(select(Order).where(Order.store_id == store.id)):
+            if order.status in order_rules.HOLDS_STOCK:
+                for product_id, pieces in order_rules.pieces_by_product(order).items():
+                    held[product_id] = held.get(product_id, 0) + pieces
+        reserved = {product.id: product.reserved_pieces
+                    for product in s.scalars(select(Product).where(Product.store_id == store.id))
+                    if product.reserved_pieces}
+    assert reserved == held

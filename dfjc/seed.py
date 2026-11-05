@@ -7,6 +7,7 @@ feature adds its sample data here in the same pull request.
 import secrets
 from datetime import timedelta
 
+from sqlalchemy import select
 from werkzeug.security import generate_password_hash
 
 from . import invites
@@ -160,13 +161,91 @@ def make_demo(s, moment):
     s.add(store)
     s.flush()
     visitor = person(s, store, DEMO_NAME, "ana.reyes@example.com", OWNER, "09171234567", moment, 90)
-    person(s, store, "Lorna Cruz", "lorna.cruz@example.com", CASHIER, "09181234567", moment, 60)
+    cashier = person(s, store, "Lorna Cruz", "lorna.cruz@example.com", CASHIER, "09181234567", moment, 60)
     rider = person(s, store, "Jun Dizon", "jun.dizon@example.com", RIDER, "09191234567", moment, 45)
-    person(s, store, "Marites Santos", "marites.santos@example.com", SHOPPER, "09201234567", moment, 20)
-    person(s, store, "Ramon Garcia", "ramon.garcia@example.com", SHOPPER, "09211234567", moment, 12)
+    marites = person(s, store, "Marites Santos", "marites.santos@example.com", SHOPPER, "09201234567", moment, 20)
+    ramon = person(s, store, "Ramon Garcia", "ramon.garcia@example.com", SHOPPER, "09211234567", moment, 12)
     # Invite links: one used by the rider, one still waiting for a new cashier.
     used, _ = invites.create_invite(s, store, RIDER, "Jun", visitor, moment - timedelta(days=46))
     used.used_at, used.used_by_id = moment - timedelta(days=45), rider.id
     invites.create_invite(s, store, CASHIER, "New cashier for the night shift", visitor, moment - timedelta(days=1))
     fill(s, store, moment)
+    fill_orders(s, store, {"ana": visitor, "lorna": cashier, "marites": marites, "ramon": ramon}, moment)
     return visitor
+
+
+# ---------- Stage 2: delivery areas, addresses, a cart and orders ----------
+
+# (barangay, fee in pesos, delivered to now?)
+AREAS = [("Poblacion", 30, True), ("San Isidro", 40, True), ("Santa Cruz", 50, True), ("Bagong Silang", 60, True),
+         ("Malinis", 80, False)]
+
+
+def fill_orders(s, store, people, moment):
+    """Orders made with the real checkout and pricing code, so the held stock adds up.
+    Ana (the visitor) has one waiting for the cashier, one priced and one she cancelled;
+    other shoppers have bulk orders waiting, so the cashier has something to price."""
+    from . import checkout, orders
+    from .models import DELIVERY, PICKUP, WHOLESALE, Address, DeliveryArea
+
+    areas = {}
+    for order_index, (name, fee, active) in enumerate(AREAS):
+        areas[name] = DeliveryArea(store_id=store.id, name=name, fee=centavos(fee), is_active=active,
+                                   sort_order=order_index)
+        s.add(areas[name])
+    s.flush()
+    units = {(unit.product.name, unit.name): unit
+             for unit in s.scalars(select(ProductUnit).join(Product).where(Product.store_id == store.id))}
+
+    home = Address(user_id=people["ana"].id, label="Home", area_id=areas["San Isidro"].id,
+                   street="45 Mabini Street, Purok 3", landmark="the blue gate beside the chapel",
+                   created_at=moment - timedelta(days=30))
+    home.area = areas["San Isidro"]
+    s.add(home)
+
+    def order(who, lines, ago, fulfilment=PICKUP, address=None, note=""):
+        user = people[who]
+        for product_name, unit_name, quantity in lines:
+            checkout.add_to_cart(s, user, units[(product_name, unit_name)], quantity, moment - ago)
+        s.flush()
+        area = address.area if address else None
+        choice = {"fulfilment": fulfilment, "payment_method": "cash_pickup" if fulfilment == PICKUP else "cod",
+                  "area": area, "address": address.one_line if address else "", "note": note}
+        placed, _ = checkout.place_order(s, user, store, choice, checkout.new_checkout_key(), moment - ago)
+        return placed
+
+    def price(placed, ago, wholesale_bulk=True, note=""):
+        choices = {line.id: WHOLESALE for line in placed.lines if wholesale_bulk and line.pieces_per_unit > 1}
+        orders.price_order(s, placed, choices, people["lorna"], moment - ago, placed.version, note)
+
+    hours, days = timedelta(hours=1), timedelta(days=1)
+    # Ana's own orders (what the visitor sees as a shopper), oldest first.
+    cancelled = order("ana", [("Chocolate bar 30 g", "Box of 24", 1)], 4 * days)
+    orders.cancel(s, cancelled, people["ana"], moment - 4 * days + hours, "I ordered the wrong size.")
+    priced = order("ana", [("Cola 1.5 L", "Case of 12", 1), ("Bottled water 500 mL", "Bottle", 6)], days,
+                   DELIVERY, home, "Please call when you are near.")
+    price(priced, days - 2 * hours, wholesale_bulk=False)
+    order("ana", [("Well-milled rice", "Sack of 25 kg", 1), ("Soy sauce 1 L", "Bottle", 2),
+                  ("Cheese crackers", "Bundle of 10", 1)], timedelta(minutes=35))
+
+    # Other shoppers: a reseller's bulk orders (one priced at wholesale), a delivery, and one the store cancelled.
+    bulk = order("marites", [("Instant pancit canton 60 g", "Box of 72", 1), ("3-in-1 coffee sachet", "Box of 30", 2),
+                             ("Candles, big", "Piece", 4)], 2 * days)
+    price(bulk, 2 * days - hours, note="Wholesale price for the boxes. Salamat po!")
+    order("marites", [("Instant noodles, chicken 55 g", "Box of 72", 2), ("Sardines in tomato sauce 155 g", "Case of 100", 1),
+                      ("Laundry powder 70 g", "Case of 144", 1), ("Shampoo sachet 12 mL", "Strip of 12", 5)],
+          timedelta(minutes=12), note="For my sari-sari store. I will pick up tomorrow morning.")
+    ramon_home = Address(user_id=people["ramon"].id, label="Home", area_id=areas["Poblacion"].id,
+                         street="12 Luna Street", landmark="", created_at=moment - 5 * days)
+    ramon_home.area = areas["Poblacion"]
+    s.add(ramon_home)
+    sold_out = order("ramon", [("Meat loaf 150 g", "Case of 48", 1)], 3 * days, DELIVERY, ramon_home)
+    orders.cancel(s, sold_out, people["lorna"], moment - 3 * days + hours,
+                  "Sorry, the supplier was late with this case. We will text you when it arrives.")
+    order("ramon", [("Corned beef 150 g", "Can", 3), ("Evaporated milk 370 mL", "Can", 2)], timedelta(minutes=4),
+          DELIVERY, ramon_home)
+
+    # Something in Ana's cart, so the cart page has an example.
+    checkout.add_to_cart(s, people["ana"], units[("Bottled water 500 mL", "Case of 24")], 1, moment)
+    checkout.add_to_cart(s, people["ana"], units[("Instant pancit canton 60 g", "Pack")], 6, moment)
+    s.flush()

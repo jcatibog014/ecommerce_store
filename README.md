@@ -2,20 +2,32 @@
 
 DFJC Store is a website for a real store. The store sells **wholesale and retail**, like a big sari-sari store. People can buy one piece, one pack, or a whole case.
 
-This is **stage 1 of 8**. Now you can look at the products and their prices. Ordering, paying and the counter come in the next stages. The full plan is in [docs/PLAN.md](docs/PLAN.md).
+This is **stage 2 of 8**. Now shoppers can fill a cart and order for pickup or delivery, and they pay in cash. The cashier checks every order and gives the wholesale price where it applies. Paying online, packing and the counter come in the next stages. The full plan is in [docs/PLAN.md](docs/PLAN.md).
 
 ![The home page](docs/screenshots/home.png)
 
 ## What you can do now
 
-**Shoppers** (anyone can look; you need an account to order later):
+**Shoppers** (anyone can look; you need an account to order):
 
 - See the products by category, like Drinks or Canned Goods.
 - Search for a product. Sort by name, by price, or the newest first.
 - See every way to buy a product (a bottle, a case of 24) and the price of one piece.
 - See if a product is in stock, almost gone, or out of stock.
+- Put products in a cart, then check out.
+- Choose **pickup** at the store, or **delivery** to your barangay (each barangay has its own fee).
+- Pay in cash: at the counter, or to the rider.
+- See every order in **My Orders**: what the store is doing now, and what happened when.
+- Cancel an order before the store starts packing it.
 - Make an account with your name, email and mobile number.
 - Forgot your password? The store emails you a link to make a new one.
+
+**The cashier:**
+
+- Sees new orders in **Orders**, with a number in the menu.
+- Chooses **Retail** or **Wholesale** for each line (or for all lines at once). The total changes as you click.
+- Confirms the price. Then the shopper sees the final total.
+- Cancels an order with a reason. The items go back on sale.
 
 **The owner:**
 
@@ -25,8 +37,19 @@ This is **stage 1 of 8**. Now you can look at the products and their prices. Ord
 - See products that are running low.
 - Invite a cashier or a rider with a one-time link.
 - Change the store's name, address, phone and opening hours.
+- Choose the barangays for delivery, and the fee for each.
+- Do everything the cashier does.
 
-**The cashier** can see all products, stock and wholesale prices, but can't change them.
+**The cashier** can also see all products, stock and wholesale prices, but can't change them.
+
+## How an order works
+
+1. The shopper puts products in the cart and checks out. The store **holds** those pieces, so nobody else can buy them.
+2. The order waits for the cashier. The shopper sees an **estimated** total at retail price.
+3. The cashier chooses retail or wholesale for each line and confirms. The shopper sees the **final** total.
+4. The shopper pays in cash at pickup or on delivery. (Packing and delivery come in stage 4.)
+
+If two shoppers try to buy the last pieces at the same moment, only one gets them. The other sees how many are left. If someone presses "Place order" twice, there is still only one order.
 
 ## Pictures
 
@@ -50,6 +73,17 @@ This is **stage 1 of 8**. Now you can look at the products and their prices. Ord
 | Staff: store details | ![Store details](docs/screenshots/store-details.png) |
 | Cashier: low stock | ![Products running low](docs/screenshots/low-stock.png) |
 | Settings | ![Settings](docs/screenshots/settings.png) |
+| Cart | ![The cart](docs/screenshots/cart.png) |
+| Cart on a phone | ![The cart on a phone](docs/screenshots/phone-cart.png) |
+| Check out | ![Pickup or delivery, and payment](docs/screenshots/checkout.png) |
+| My orders | ![Order history](docs/screenshots/my-orders.png) |
+| An order waiting for the cashier | ![An order with an estimated total](docs/screenshots/order-waiting.png) |
+| A priced order | ![An order with its final total](docs/screenshots/order-priced.png) |
+| A priced order on a phone | ![A priced order on a phone](docs/screenshots/phone-order.png) |
+| Cashier: orders to price | ![The orders queue](docs/screenshots/orders-queue.png) |
+| Cashier: price an order | ![Retail or wholesale for each line](docs/screenshots/price-order.png) |
+| Cashier: price an order (dark mode) | ![Pricing in dark mode](docs/screenshots/price-order-dark.png) |
+| Owner: delivery areas | ![Barangays and delivery fees](docs/screenshots/delivery-areas.png) |
 
 All pictures come from **Try Demo**. The names and products in the demo are made up.
 

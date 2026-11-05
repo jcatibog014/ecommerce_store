@@ -171,7 +171,79 @@ function setUpRowLinks() {
   });
 }
 
+// Money arrives in centavos, like the server keeps it: 2050 -> "₱20.50".
+function peso(centavos) {
+  const sign = centavos < 0 ? "-" : "";
+  const value = Math.abs(centavos);
+  const whole = Math.floor(value / 100).toLocaleString("en-US");
+  return `${sign}₱${whole}.${String(value % 100).padStart(2, "0")}`;
+}
+
+// Checkout: the address only shows for delivery, and the total follows the barangay's fee.
+// The server works everything out again; this only helps the shopper see it.
+function setUpCheckout() {
+  const form = document.querySelector("[data-checkout]");
+  if (!form) return;
+  const summary = form.querySelector("[data-summary]");
+  const subtotal = Number(summary.dataset.subtotal);
+  const newFields = form.querySelector("[data-new-address-fields]");
+  const update = () => {
+    const how = (form.querySelector('input[name="fulfilment"]:checked') || {}).value || "pickup";
+    form.querySelectorAll("[data-show-when]").forEach((part) => { part.hidden = part.dataset.showWhen !== how; });
+    const address = form.querySelector('input[name="address_id"]:checked');
+    const isNew = !address || "newAddress" in address.dataset;
+    if (newFields) newFields.hidden = !isNew;
+    let fee = null;
+    if (how === "delivery") {
+      if (isNew) {
+        const option = form.querySelector("[data-area-select]");
+        const chosen = option && option.selectedOptions[0];
+        if (chosen && chosen.dataset.fee) fee = Number(chosen.dataset.fee);
+      } else {
+        fee = Number(address.dataset.fee);
+      }
+    }
+    form.querySelector("[data-fee-text]").textContent = fee === null ? "Depends on the barangay" : peso(fee);
+    form.querySelector("[data-total-text]").textContent = peso(subtotal + (how === "delivery" && fee ? fee : 0));
+  };
+  form.addEventListener("change", update);
+  update();
+}
+
+// The cashier's Price This Order form: each line's amount and the total follow the
+// Retail / Wholesale choice, and "Set all to" changes every line at once.
+function setUpPriceForm() {
+  const form = document.querySelector("[data-price-form]");
+  if (!form) return;
+  const fee = Number(form.dataset.deliveryFee);
+  const update = () => {
+    let subtotal = 0;
+    form.querySelectorAll("[data-line]").forEach((row) => {
+      const choice = row.querySelector("input[type=radio]:checked").value;
+      const amount = Number(row.dataset.quantity) * Number(row.dataset[choice]);
+      row.querySelector("[data-line-total]").textContent = peso(amount);
+      row.classList.toggle("is-wholesale", choice === "wholesale");
+      subtotal += amount;
+    });
+    form.querySelector("[data-subtotal-text]").textContent = peso(subtotal);
+    form.querySelector("[data-total-text]").textContent = peso(subtotal + fee);
+  };
+  const all = form.querySelector("[data-price-all]");
+  all.hidden = false;
+  all.querySelectorAll("[data-set-all]").forEach((button) => {
+    button.addEventListener("click", () => {
+      form.querySelectorAll(`input[type=radio][value="${button.dataset.setAll}"]:not(:disabled)`)
+        .forEach((radio) => { radio.checked = true; });
+      update();
+    });
+  });
+  form.addEventListener("change", update);
+  update();
+}
+
 setUpTheme();
+setUpCheckout();
+setUpPriceForm();
 setUpToasts();
 setUpMenu();
 setUpUserMenu();

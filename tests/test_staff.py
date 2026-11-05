@@ -25,7 +25,7 @@ def test_an_invite_link_makes_a_cashier(app, client, owner):
     post(owner, "/logout")
     assert "You were invited to be a <strong>cashier</strong>" in client.get(link).get_data(as_text=True)
     response = post(client, link, JOIN)
-    assert response.status_code == 302 and response.location == "/manage/products"
+    assert response.status_code == 302 and response.location == "/manage/orders"
     with app.app_context():
         user = db.session().scalar(select(User).where(User.email == "carlo@example.com"))
         invite = db.session().scalar(select(Invite))

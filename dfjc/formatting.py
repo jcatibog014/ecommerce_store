@@ -36,6 +36,13 @@ def per_piece(unit):
     return peso(round(unit.retail_price / unit.pieces_per_unit))
 
 
+def mobile(number):
+    """09171234567 -> 0917 123 4567, the way people write it."""
+    if len(number or "") == 11 and number.isdigit():
+        return f"{number[:4]} {number[4:7]} {number[7:]}"
+    return number or ""
+
+
 def pieces(count):
     return f"{count:,} piece" if count == 1 else f"{count:,} pieces"
 
@@ -44,6 +51,6 @@ def init_app(app):
     for name, function in {
         "peso": peso, "plain_peso": plain_peso, "nice_day": nice_day, "short_day": short_day,
         "nice_time": nice_time, "nice_date": nice_date, "nice_datetime": nice_datetime, "per_piece": per_piece,
-        "pieces": pieces,
+        "pieces": pieces, "mobile": mobile,
     }.items():
         app.jinja_env.filters[name] = function

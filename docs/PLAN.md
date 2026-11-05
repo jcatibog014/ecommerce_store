@@ -12,8 +12,8 @@ The user wants a mini e-commerce store to practise **transactions, payment integ
 - **one PR per stage**: I stop after each stage for review.
 
 ## Progress
-- [x] Stage 1: setup and catalog (this PR: `stage-1-setup`)
-- [ ] Stage 2: cart, checkout and order state
+- [x] Stage 1: setup and catalog (PR #1)
+- [x] Stage 2: cart, checkout and order state (`stage-2-orders`). Cash only for now; the "Waiting for Payment" tab comes back with online payment in stage 3.
 - [ ] Stage 3: payments
 - [ ] Stage 4: fulfilment and store admin
 - [ ] Stage 5: walk-in sales

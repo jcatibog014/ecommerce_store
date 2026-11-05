@@ -3,7 +3,7 @@
 | Role    | Can do                                                               |
 |---------|----------------------------------------------------------------------|
 | Owner   | everything: products, prices, staff, store details                   |
-| Cashier | see products and stock; price and take orders (from stage 2)         |
+| Cashier | see products and stock; price orders (retail or wholesale), cancel   |
 | Rider   | deliveries (from stage 4)                                            |
 | Shopper | browse, cart, checkout, order history                                |
 
@@ -23,7 +23,10 @@ VIEW_AS_ROLES = (SHOPPER, CASHIER, RIDER, OWNER)
 MANAGE_PRODUCTS = (OWNER,)  # add and edit products, units, prices, photos, categories
 SEE_PRODUCTS = (OWNER, CASHIER)  # the staff product list with stock
 MANAGE_STAFF = (OWNER,)
-MANAGE_STORE = (OWNER,)
+MANAGE_STORE = (OWNER,)  # store details and delivery areas
+SHOP = (SHOPPER,)  # a cart, checkout and order history (staff sell at the counter instead)
+SEE_ORDERS = (OWNER, CASHIER)
+PRICE_ORDERS = (OWNER, CASHIER)  # choose retail or wholesale, and cancel
 
 
 def role_of(user):
@@ -59,4 +62,5 @@ def needs(roles, message="Your role can't open this page."):
 def init_app(app):
     app.jinja_env.globals.update(
         can=can, is_staff=is_staff, MANAGE_PRODUCTS=MANAGE_PRODUCTS, SEE_PRODUCTS=SEE_PRODUCTS,
-        MANAGE_STAFF=MANAGE_STAFF, MANAGE_STORE=MANAGE_STORE, VIEW_AS_ROLES=VIEW_AS_ROLES, ROLES=ROLES)
+        MANAGE_STAFF=MANAGE_STAFF, MANAGE_STORE=MANAGE_STORE, SHOP=SHOP, SEE_ORDERS=SEE_ORDERS,
+        PRICE_ORDERS=PRICE_ORDERS, VIEW_AS_ROLES=VIEW_AS_ROLES, ROLES=ROLES)

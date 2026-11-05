@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, money_field, empty %}
+{% block title %}Delivery Areas - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Delivery Areas</h1>
+    <p class="page-sub">Shoppers can only choose delivery to these barangays. Switch one off to stop delivering there.</p>
+  </div>
+  {% if areas %}
+    <div class="card category-rows">
+      <div class="area-row category-row-head" aria-hidden="true">
+        <span>Barangay</span><span>Delivery fee</span><span>Order</span><span>On</span><span></span>
+      </div>
+      {% for area in areas %}
+        <form method="post" action="{{ url_for('staff.save_area', area_id=area.id) }}" class="area-row">
+          {{ csrf() }}
+          <input type="hidden" name="is_active_sent" value="1">
+          {{ field('name', 'Barangay', area.name, attrs='required maxlength="80"') }}
+          {{ money_field('fee', 'Delivery fee', area.fee, attrs='required') }}
+          {{ field('sort_order', 'Order', area.sort_order, attrs='inputmode="numeric"') }}
+          <label class="check"><input type="checkbox" name="is_active" value="1"{% if area.is_active %} checked{% endif %}><span class="area-on">On</span></label>
+          <div class="unit-actions"><button class="button button-small button-quiet" type="submit">Save</button></div>
+        </form>
+      {% endfor %}
+    </div>
+  {% else %}
+    {{ empty('No Delivery Areas Yet', 'Add the barangays your rider goes to, with the fee for each. Until then, shoppers can only pick up.') }}
+  {% endif %}
+  <form method="post" class="card stack narrow-form">
+    {{ csrf() }}
+    <h2>Add an Area</h2>
+    <div class="form-grid">
+      {{ field('name', 'Barangay', values.name, errors.name, attrs='required maxlength="80" placeholder="San Isidro"') }}
+      {{ money_field('fee', 'Delivery fee', values.fee, errors.fee, attrs='required') }}
+      {{ field('sort_order', 'Order', values.sort_order, errors.sort_order, attrs='inputmode="numeric"') }}
+    </div>
+    <div class="form-actions"><button class="button" type="submit">Add area</button></div>
+  </form>
+{% endblock %}

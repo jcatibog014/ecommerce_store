@@ -67,19 +67,22 @@ def create_app(test_config=None):
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
     from . import auth, db, formatting, permissions
-    from .models import CATEGORY_ICONS, ROLE_LABELS
-    from .views import manage, settings, shop, staff
+    from .models import CATEGORY_ICONS, FULFILMENTS, PAYMENT_METHODS, PRICE_TYPES, ROLE_LABELS
+    from .views import cart, manage, my_orders, settings, shop, staff, staff_orders
 
     db.init_app(app)
     auth.init_app(app)
     formatting.init_app(app)
     permissions.init_app(app)
     shop.init_app(app)
+    cart.init_app(app)
+    staff_orders.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, shop.bp, manage.bp, staff.bp, settings.bp):
+    for blueprint in (auth.bp, shop.bp, cart.bp, my_orders.bp, manage.bp, staff_orders.bp, staff.bp, settings.bp):
         app.register_blueprint(blueprint)
 
-    app.jinja_env.globals.update(APP_NAME="DFJC Store", ROLE_LABELS=ROLE_LABELS, CATEGORY_ICONS=CATEGORY_ICONS)
+    app.jinja_env.globals.update(APP_NAME="DFJC Store", ROLE_LABELS=ROLE_LABELS, CATEGORY_ICONS=CATEGORY_ICONS,
+                                 FULFILMENTS=FULFILMENTS, PAYMENT_METHODS=PAYMENT_METHODS, PRICE_TYPES=PRICE_TYPES)
 
     @app.get("/healthz")
     def healthz():

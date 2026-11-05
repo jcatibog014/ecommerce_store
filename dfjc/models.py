@@ -4,7 +4,14 @@
             ├─< invites (a link that makes a cashier or rider)
             ├─< categories
             ├─< photos
-            └─< products ──< product_units (piece, pack, case: each with a retail AND a wholesale price)
+            ├─< products ──< product_units (piece, pack, case: each with a retail AND a wholesale price)
+            ├─< delivery_areas (barangay -> delivery fee)
+            └─< orders ─┬─< order_lines (a copy of the name and BOTH prices when ordered)
+                        └─< order_events (the timeline: every status change, who and when)
+
+    users ─┬─< cart_items ──> product_units
+           ├─< addresses ──> delivery_areas
+           └─< orders
 
 Everything belongs to one store. The real store is DFJC; every "Try Demo"
 makes its own small demo store, so a visitor can never touch the real
@@ -31,6 +38,37 @@ SHOPPER = "shopper"
 ROLES = (OWNER, CASHIER, RIDER, SHOPPER)
 STAFF_ROLES = (OWNER, CASHIER, RIDER)
 ROLE_LABELS = {OWNER: "Owner", CASHIER: "Cashier", RIDER: "Rider", SHOPPER: "Shopper"}
+
+# ---------- Orders (orders.py says which moves between statuses are allowed) ----------
+
+PLACED = "placed"                      # the shopper ordered; the cashier hasn't priced it yet
+AWAITING_PAYMENT = "awaiting_payment"  # priced; waiting for an online payment (stage 3)
+CONFIRMED = "confirmed"                # priced; paid in cash at pickup or on delivery
+PAID = "paid"                          # paid online (stage 3)
+PACKING = "packing"
+READY = "ready"                        # ready for pickup, or ready to go out
+OUT_FOR_DELIVERY = "out_for_delivery"
+PICKED_UP = "picked_up"
+DELIVERED = "delivered"
+CANCELLED = "cancelled"
+REFUNDED = "refunded"                  # paid online, then cancelled (stage 3)
+ORDER_STATUSES = (PLACED, AWAITING_PAYMENT, CONFIRMED, PAID, PACKING, READY, OUT_FOR_DELIVERY, PICKED_UP,
+                  DELIVERED, CANCELLED, REFUNDED)
+OPEN_STATUSES = (PLACED, AWAITING_PAYMENT, CONFIRMED, PAID, PACKING, READY, OUT_FOR_DELIVERY)
+DONE_STATUSES = (PICKED_UP, DELIVERED, CANCELLED, REFUNDED)
+
+PICKUP = "pickup"
+DELIVERY = "delivery"
+FULFILMENTS = {PICKUP: "Pick up at the store", DELIVERY: "Delivery"}
+
+CASH_PICKUP = "cash_pickup"
+COD = "cod"
+PAYMENT_METHODS = {CASH_PICKUP: "Cash at pickup", COD: "Cash on delivery"}
+
+RETAIL = "retail"
+WHOLESALE = "wholesale"
+MIXED = "mixed"
+PRICE_TYPES = {RETAIL: "Retail", WHOLESALE: "Wholesale", MIXED: "Retail and wholesale"}
 
 # The small picture on a product without a photo, chosen per category (_icons.html draws them).
 CATEGORY_ICONS = {
@@ -231,3 +269,167 @@ class ProductUnit(Base):
     @property
     def wholesale_saving(self):
         return self.retail_price - self.wholesale_price
+
+
+# ---------- Delivery, the cart and addresses ----------
+
+class DeliveryArea(Base):
+    """A place the rider goes (a barangay) and what delivery there costs."""
+    __tablename__ = "delivery_areas"
+    __table_args__ = (UniqueConstraint("store_id", "name"), CheckConstraint("fee >= 0", name="fee_not_negative"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    fee: Mapped[int]  # centavos
+    is_active: Mapped[bool] = mapped_column(default=True)
+    sort_order: Mapped[int] = mapped_column(default=0)
+
+
+class CartItem(Base):
+    """One line in a shopper's cart. Nothing is held in stock until the order is placed."""
+    __tablename__ = "cart_items"
+    __table_args__ = (UniqueConstraint("user_id", "unit_id"),
+                      CheckConstraint("quantity >= 1", name="quantity_positive"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("product_units.id", ondelete="CASCADE"))
+    quantity: Mapped[int]
+    added_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    unit: Mapped[ProductUnit] = relationship()
+
+    @property
+    def pieces(self):
+        return self.quantity * self.unit.pieces_per_unit
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit.retail_price
+
+
+class Address(Base):
+    __tablename__ = "addresses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    label: Mapped[str] = mapped_column(String(40), default="Home")
+    area_id: Mapped[int | None] = mapped_column(ForeignKey("delivery_areas.id", ondelete="SET NULL"))
+    street: Mapped[str] = mapped_column(String(200))  # house number, street, purok
+    landmark: Mapped[str] = mapped_column(String(200), default="")  # "beside the chapel"
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    area: Mapped[DeliveryArea | None] = relationship()
+
+    @property
+    def one_line(self):
+        line = ", ".join(part for part in (self.street, self.area.name if self.area else "") if part)
+        return f"{line} (near {self.landmark})" if self.landmark else line
+
+
+# ---------- Orders ----------
+
+class Order(Base):
+    __tablename__ = "orders"
+    __table_args__ = (
+        # A double-tap on "Place order" sends the same key twice; the second one finds the first order.
+        UniqueConstraint("user_id", "idempotency_key"),
+        CheckConstraint(f"status IN ({sql_list(ORDER_STATUSES)})", name="status"),
+        CheckConstraint(f"fulfilment IN ('{PICKUP}', '{DELIVERY}')", name="fulfilment"),
+        CheckConstraint("subtotal >= 0 AND delivery_fee >= 0 AND discount >= 0 AND total >= 0",
+                        name="money_not_negative"),
+        Index("ix_orders_store_status", "store_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"))
+    # SET NULL: the store keeps its sales records even if a shopper's account goes.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    ref: Mapped[str] = mapped_column(String(12), unique=True)  # DF-7K3QM: easy to say on the phone
+    status: Mapped[str] = mapped_column(String(20), default=PLACED)
+    fulfilment: Mapped[str] = mapped_column(String(10))
+    payment_method: Mapped[str] = mapped_column(String(20))
+    price_type: Mapped[str] = mapped_column(String(10), default=RETAIL)
+    # Copies, so an order still says who and where after the shopper edits their details.
+    customer_name: Mapped[str] = mapped_column(String(80))
+    customer_mobile: Mapped[str] = mapped_column(String(20), default="")
+    area_name: Mapped[str] = mapped_column(String(80), default="")
+    address: Mapped[str] = mapped_column(String(500), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")  # from the shopper
+    cashier_note: Mapped[str] = mapped_column(String(300), default="")  # shown to the shopper
+    subtotal: Mapped[int] = mapped_column(default=0)
+    delivery_fee: Mapped[int] = mapped_column(default=0)
+    discount: Mapped[int] = mapped_column(default=0)
+    total: Mapped[int] = mapped_column(default=0)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    # Goes up by 1 on every change (orders.move). A change made from an older copy is refused,
+    # so two cashiers can't price the same order at once.
+    version: Mapped[int] = mapped_column(default=1)
+    placed_at: Mapped[datetime] = mapped_column(default=utcnow)
+    priced_at: Mapped[datetime | None]
+    priced_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    lines: Mapped[list["OrderLine"]] = relationship(back_populates="order", order_by="OrderLine.id",
+                                                    cascade="all, delete-orphan", passive_deletes=True)
+    events: Mapped[list["OrderEvent"]] = relationship(back_populates="order", order_by="OrderEvent.id",
+                                                      cascade="all, delete-orphan", passive_deletes=True)
+    priced_by: Mapped[User | None] = relationship(foreign_keys=[priced_by_id])
+
+    @property
+    def is_priced(self):
+        return self.priced_at is not None
+
+    @property
+    def item_count(self):
+        return sum(line.quantity for line in self.lines)
+
+
+class OrderLine(Base):
+    """One line of an order. The name and BOTH prices are copied when the order is placed,
+    so a later price change never changes an order that was already made."""
+    __tablename__ = "order_lines"
+    __table_args__ = (
+        CheckConstraint("quantity >= 1 AND pieces >= 1", name="quantity_positive"),
+        CheckConstraint(f"price_type IN ('{RETAIL}', '{WHOLESALE}')", name="price_type"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), index=True)
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("product_units.id", ondelete="SET NULL"))
+    product_name: Mapped[str] = mapped_column(String(80))
+    unit_name: Mapped[str] = mapped_column(String(40))
+    pieces_per_unit: Mapped[int]
+    quantity: Mapped[int]
+    pieces: Mapped[int]  # quantity x pieces_per_unit: what is held in stock
+    retail_price: Mapped[int]
+    wholesale_price: Mapped[int]
+    price_type: Mapped[str] = mapped_column(String(10), default=RETAIL)  # the cashier's choice
+
+    order: Mapped[Order] = relationship(back_populates="lines")
+
+    @property
+    def unit_price(self):
+        return self.wholesale_price if self.price_type == WHOLESALE else self.retail_price
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit_price
+
+
+class OrderEvent(Base):
+    """One step in an order's timeline."""
+    __tablename__ = "order_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
+    from_status: Mapped[str | None] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20))
+    by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    order: Mapped[Order] = relationship(back_populates="events")
+    by: Mapped[User | None] = relationship()

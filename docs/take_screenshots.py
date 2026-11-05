@@ -26,7 +26,7 @@ OUT = Path(__file__).parent / "screenshots"
 DESKTOP = {"width": 1280, "height": 800}
 PHONE = {"width": 390, "height": 844}
 
-# (file name, View As role, address, theme, screen size). {water} is the demo's bottled water.
+# (file name, View As role, address, theme, screen size). {...} addresses are found by address().
 PAGES = [
     ("home.png", "shopper", "/", "light", DESKTOP),
     ("home-dark.png", "shopper", "/", "dark", DESKTOP),
@@ -45,6 +45,17 @@ PAGES = [
     ("store-details.png", "owner", "/manage/store", "light", DESKTOP),
     ("low-stock.png", "cashier", "/manage/products?show=low", "light", DESKTOP),
     ("settings.png", "shopper", "/settings/", "light", DESKTOP),
+    ("cart.png", "shopper", "/cart", "light", DESKTOP),
+    ("checkout.png", "shopper", "/checkout", "light", DESKTOP),
+    ("my-orders.png", "shopper", "/orders", "light", DESKTOP),
+    ("order-waiting.png", "shopper", "{my-order:Waiting for the cashier}", "light", DESKTOP),
+    ("order-priced.png", "shopper", "{my-order:Confirmed}", "light", DESKTOP),
+    ("phone-order.png", "shopper", "{my-order:Confirmed}", "light", PHONE),
+    ("phone-cart.png", "shopper", "/cart", "light", PHONE),
+    ("orders-queue.png", "cashier", "/manage/orders", "light", DESKTOP),
+    ("price-order.png", "cashier", "{bulk-order}", "light", DESKTOP),
+    ("price-order-dark.png", "cashier", "{bulk-order}", "dark", DESKTOP),
+    ("delivery-areas.png", "owner", "/manage/delivery-areas", "light", DESKTOP),
 ]
 
 
@@ -75,7 +86,16 @@ def save(page, name):
 
 
 def address(page, path):
-    """{water} is the demo's bottled water in the shop, {water-admin} the same product's staff page."""
+    """{water} is the demo's bottled water in the shop, {water-admin} the same product's staff page,
+    {my-order:<status>} the visitor's order with that status, {bulk-order} the reseller's order to price."""
+    if path.startswith("{my-order:"):
+        page.goto(f"{BASE}/orders")
+        row = page.locator("tr", has_text=path[len("{my-order:"):-1])
+        return row.locator(".row-link").first.get_attribute("href")
+    if path == "{bulk-order}":
+        page.goto(f"{BASE}/manage/orders")
+        row = page.locator("tr", has_text="Marites Santos").filter(has_text="Has bulk items")
+        return row.locator(".row-link").first.get_attribute("href")
     if path.startswith("{water"):
         name, _, anchor = path.partition("#")
         page.goto(f"{BASE}/products?q=bottled+water")

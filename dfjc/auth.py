@@ -162,7 +162,7 @@ def check_login(s, store, email, password, moment):
 def home_for(user):
     """Where someone lands after logging in: staff at their work, shoppers at the shop."""
     if user is not None and permissions.role_of(user) in (OWNER, CASHIER):
-        return url_for("manage.products")
+        return url_for("staff_orders.index")
     return url_for("shop.home")
 
 

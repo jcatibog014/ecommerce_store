@@ -62,7 +62,7 @@ def test_log_in_with_email_any_case(client, shopper_id):
 
 def test_staff_land_on_their_work(client, owner_id):
     response = post(client, "/login", {"email": "owner@example.com", "password": PASSWORD})
-    assert response.location == "/manage/products"
+    assert response.location == "/manage/orders"
 
 
 def test_wrong_password_never_says_which_part_was_wrong(client, shopper_id):

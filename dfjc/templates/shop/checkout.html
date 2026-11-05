@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea %}
+{% block title %}Check Out - {{ g.store.name }}{% endblock %}
+{% block content %}
+  {% set fulfilment = form.get('fulfilment', 'pickup') %}
+  {% set chosen_address = form.get('address_id', addresses[0].id|string if addresses else 'new') %}
+  <a class="back-link" href="{{ url_for('cart.index') }}">&larr; Cart</a>
+  <div class="page-head"><h1>Check Out</h1></div>
+  <form method="post" class="checkout-layout" data-checkout>
+    {{ csrf() }}
+    {# The same key is sent if "Place order" is pressed twice, so only one order is made. #}
+    <input type="hidden" name="idempotency_key" value="{{ key }}">
+    <div class="checkout-steps">
+      <section class="card">
+        <h2><span class="step-number" aria-hidden="true"></span> How Do You Want It?</h2>
+        {% if errors.fulfilment %}<p class="field-error">{{ errors.fulfilment }}</p>{% endif %}
+        <div class="choice-cards">
+          <label class="choice-card">
+            <input type="radio" name="fulfilment" value="pickup"{% if fulfilment == 'pickup' %} checked{% endif %}>
+            <span><strong>Pick up at the store</strong><span class="row-sub">Free. {{ g.store.pickup_note or 'We tell you when it is ready.' }}</span></span>
+          </label>
+          <label class="choice-card">
+            <input type="radio" name="fulfilment" value="delivery"{% if fulfilment == 'delivery' %} checked{% endif %}{% if not areas %} disabled{% endif %}>
+            <span><strong>Delivery</strong><span class="row-sub">{% if areas %}Our rider brings it. The fee depends on your barangay.{% else %}Not available yet.{% endif %}</span></span>
+          </label>
+        </div>
+      </section>
+
+      {% if areas %}
+        <section class="card" data-show-when="delivery">
+          <h2><span class="step-number" aria-hidden="true"></span> Delivery Address</h2>
+          {% if errors.address_id %}<p class="field-error">{{ errors.address_id }}</p>{% endif %}
+          <div class="stack">
+            {% for address in addresses %}
+              <label class="choice-card">
+                <input type="radio" name="address_id" value="{{ address.id }}"{% if chosen_address == address.id|string %} checked{% endif %}
+                       data-fee="{{ address.area.fee if address.area else 0 }}">
+                <span><strong>{{ address.label }}</strong><span class="row-sub">{{ address.one_line }}{% if address.area %} · delivery {{ address.area.fee|peso }}{% endif %}</span></span>
+              </label>
+            {% endfor %}
+            <label class="choice-card">
+              <input type="radio" name="address_id" value="new"{% if chosen_address == 'new' %} checked{% endif %} data-new-address>
+              <span><strong>{{ 'A new address' if addresses else 'Your address' }}</strong></span>
+            </label>
+            <fieldset class="plain-fieldset stack new-address" data-new-address-fields>
+              <legend class="visually-hidden">New address</legend>
+              <label class="field{% if errors.area_id %} has-error{% endif %}">
+                <span class="field-label">Barangay</span>
+                <select name="area_id" data-area-select>
+                  <option value="">Choose your barangay</option>
+                  {% for area in areas %}
+                    <option value="{{ area.id }}" data-fee="{{ area.fee }}"{% if form.get('area_id') == area.id|string %} selected{% endif %}>{{ area.name }} (delivery {{ area.fee|peso }})</option>
+                  {% endfor %}
+                </select>
+                {% if errors.area_id %}<p class="field-error">{{ errors.area_id }}</p>{% endif %}
+              </label>
+              {{ field('street', 'House number and street', form.get('street'), errors.street, hint='And purok, if you have one', attrs='maxlength="200" autocomplete="street-address"') }}
+              <div class="form-grid">
+                {{ field('landmark', 'Landmark', form.get('landmark'), errors.landmark, hint='Optional', attrs='maxlength="200" placeholder="Beside the chapel"') }}
+                {{ field('label', 'Name this address', form.get('label'), errors.label, hint='Optional', attrs='maxlength="40" placeholder="Home"') }}
+              </div>
+              <label class="check"><input type="checkbox" name="save_address" value="1"{% if not form or form.get('save_address') %} checked{% endif %}> Save it for next time</label>
+            </fieldset>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="card">
+        <h2><span class="step-number" aria-hidden="true"></span> Payment</h2>
+        <p data-show-when="pickup"><strong>Cash at pickup.</strong> Pay at the counter when you pick up your order.</p>
+        <p data-show-when="delivery"><strong>Cash on delivery.</strong> Pay the rider when your order arrives. Please have the exact amount if you can.</p>
+        <p class="card-note">You pay the final total, after the cashier checks the prices.</p>
+      </section>
+
+      <section class="card">
+        <h2><span class="step-number" aria-hidden="true"></span> A Note for the Store</h2>
+        {{ textarea('note', 'Note', form.get('note'), errors.note, hint='Optional', rows=2, attrs='maxlength="300" placeholder="For example: I will pick up after 5 PM."') }}
+      </section>
+    </div>
+
+    <aside class="card order-summary">
+      <h2>Your Order</h2>
+      <ul class="summary-lines">
+        {% for item in items %}
+          <li><span>{{ item.quantity }} x {{ item.unit.product.name }} <span class="row-sub">{{ item.unit.name }}</span></span><span>{{ item.line_total|peso }}</span></li>
+        {% endfor %}
+      </ul>
+      <dl class="sum-rows" data-summary data-subtotal="{{ summary.subtotal }}">
+        <div><dt>Items, at retail price</dt><dd>{{ summary.subtotal|peso }}</dd></div>
+        <div data-show-when="delivery"><dt>Delivery fee</dt><dd data-fee-text>Depends on the barangay</dd></div>
+        <div class="sum-total"><dt>Estimated total</dt><dd data-total-text>{{ summary.subtotal|peso }}</dd></div>
+      </dl>
+      <p class="card-note">The cashier checks your order next and may give a wholesale price, so the final total can be lower. You'll see it on the order page.</p>
+      <button class="button button-wide" type="submit">Place order</button>
+    </aside>
+  </form>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty, status_pill %}
+{% block title %}Orders - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Orders</h1>
+    <p class="page-sub">New online orders wait in To Price. Choose retail or wholesale, then the shopper sees the final total.</p>
+  </div>
+  <nav class="tabs" aria-label="Which orders">
+    {% for key, (label, statuses, _) in tabs.items() %}
+      <a href="{{ url_for('staff_orders.index', tab=key if key != 'to-price' else None) }}"{% if tab == key %} aria-current="page"{% endif %}>
+        {{ label }}{% if statuses and tab_counts[key] and key in ('to-price', 'confirmed') %} <span class="badge{% if key != 'to-price' %} badge-quiet{% endif %}">{{ tab_counts[key] }}</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+
+  {% if orders_found %}
+    <div class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr><th scope="col">Order</th><th scope="col">Shopper</th><th scope="col">Placed</th><th scope="col">How</th>
+            <th scope="col" class="num">Items</th><th scope="col" class="num">Total</th><th scope="col">Status</th></tr>
+        </thead>
+        <tbody>
+          {% for order in orders_found %}
+            {% set bulk = order.lines|selectattr('pieces_per_unit', 'gt', 1)|list %}
+            <tr data-href="{{ url_for('staff_orders.detail', ref=order.ref) }}">
+              <th scope="row"><a class="row-link" href="{{ url_for('staff_orders.detail', ref=order.ref) }}">{{ order.ref }}</a>
+                {% if bulk and order.status == 'placed' %}<span class="row-sub">Has bulk items</span>{% endif %}</th>
+              <td>{{ order.customer_name }}<span class="row-sub">{{ order.customer_mobile|mobile }}</span></td>
+              <td>{{ order.placed_at|nice_datetime }}</td>
+              <td>{{ 'Pickup' if order.fulfilment == 'pickup' else 'Delivery' }}{% if order.area_name %}<span class="row-sub">{{ order.area_name }}</span>{% endif %}</td>
+              <td class="num">{{ order.item_count }}</td>
+              <td class="num">{{ order.total|peso }}{% if not order.is_priced and order.status == 'placed' %}<span class="row-sub">at retail</span>{% endif %}</td>
+              <td>{{ status_pill(order) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif tab == 'to-price' %}
+    {{ empty('Nothing to Price', 'New online orders show up here.') }}
+  {% else %}
+    {{ empty('No Orders Here', 'Orders in this list show up here.') }}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{# Pieces of an order page that shoppers and staff both see. #}
+{% from "_macros.html" import total_label %}
+
+{% macro order_steps(order) %}
+  <ol class="order-steps{% if order.status in ('cancelled', 'refunded') %} is-stopped{% endif %}" aria-label="Order progress">
+    {% for label, state in steps_of(order) %}
+      <li class="step-{{ state }}"{% if state == 'now' %} aria-current="step"{% endif %}><span class="step-dot" aria-hidden="true"></span><span>{{ label }}</span></li>
+    {% endfor %}
+  </ol>
+{% endmacro %}
+
+{% macro lines_table(order) %}
+  <table class="lines-table">
+    <thead><tr><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Each</th><th scope="col" class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for line in order.lines %}
+        <tr>
+          <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}
+            {% if order.is_priced and line.price_type == 'wholesale' %} · <span class="pill pill-wholesale">Wholesale</span>{% endif %}</span></th>
+          <td class="num">{{ line.quantity }}</td>
+          <td class="num">{{ line.unit_price|peso }}</td>
+          <td class="num">{{ line.line_total|peso }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ sums(order) }}
+{% endmacro %}
+
+{% macro sums(order) %}
+  <dl class="sum-rows">
+    <div><dt>Items{% if not order.is_priced %}, at retail price{% endif %}</dt><dd>{{ order.subtotal|peso }}</dd></div>
+    {% if order.fulfilment == 'delivery' %}<div><dt>Delivery fee ({{ order.area_name }})</dt><dd>{{ order.delivery_fee|peso }}</dd></div>{% endif %}
+    {% if order.discount %}<div><dt>Discount</dt><dd>-{{ order.discount|peso }}</dd></div>{% endif %}
+    <div class="sum-total"><dt>{{ total_label(order) }}</dt><dd>{{ order.total|peso }}</dd></div>
+  </dl>
+{% endmacro %}
+
+{% macro timeline(order) %}
+  <ol class="timeline">
+    {% for event in order.events|reverse %}
+      <li>
+        <span class="timeline-when">{{ event.created_at|nice_datetime }}</span>
+        <span class="timeline-what"><strong>{{ EVENT_WORDS[event.to_status] }}</strong>{% if event.by and event.to_status != 'placed' %} by {{ event.by.first_name }}{% endif %}</span>
+        {% if event.note %}<span class="timeline-note">{{ event.note }}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+{% endmacro %}

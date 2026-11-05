@@ -87,6 +87,10 @@ def product(product_id):
         if not can(MANAGE_PRODUCTS):
             abort(403, "Only the owner can change products.")
         values, errors = catalog.read_product_form(request.form, categories, with_stock=True)
+        if "stock_pieces" not in errors and values["stock_pieces"] < item.reserved_pieces:
+            # The database would refuse it too (a CHECK): held pieces are on the shelf.
+            errors["stock_pieces"] = (f"{item.reserved_pieces:,} pieces are held for orders, "
+                                      f"so there are at least {item.reserved_pieces:,} on the shelf.")
         if request.form.get("version") != str(item.version):
             # The form was opened before someone else's save.
             flash(CONFLICT, "error")

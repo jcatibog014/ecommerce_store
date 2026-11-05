@@ -58,6 +58,19 @@
   </svg>
 {% endmacro %}
 
+{% macro cart_icon() %}
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 4h2.5l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h7.9a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.4"></path>
+    <circle cx="9.5" cy="19.5" r="1.4"></circle><circle cx="17" cy="19.5" r="1.4"></circle>
+  </svg>
+{% endmacro %}
+
+{# An order's status, always in words (never colour alone). #}
+{% macro status_pill(order) %}<span class="pill status-{{ order.status }}">{{ status_label(order) }}</span>{% endmacro %}
+
+{# "Estimated" until the cashier prices the order. #}
+{% macro total_label(order) %}{{ 'Total' if order.is_priced else 'Estimated total' }}{% endmacro %}
+
 {# The store's mark: a little tindahan with a striped awning, on a solid yellow tile. #}
 {% macro mark() %}
   <svg class="mark" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea, status_pill %}
+{% from "_order_parts.html" import order_steps, lines_table, sums, timeline %}
+{% block title %}Order {{ order.ref }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('staff_orders.index') }}">&larr; Orders</a>
+  <div class="page-head">
+    <h1>Order {{ order.ref }}</h1>
+    {{ status_pill(order) }}
+    <p class="page-sub">Placed {{ order.placed_at|nice_datetime }}{% if order.priced_by %} · priced by {{ order.priced_by.first_name }}{% endif %}</p>
+  </div>
+
+  {{ order_steps(order) }}
+
+  <div class="order-layout">
+    {% if order.status == 'placed' and can(PRICE_ORDERS) %}
+      {# The cashier's choice per line. JavaScript keeps the total up to date; the server works it out again. #}
+      <form method="post" action="{{ url_for('staff_orders.price', ref=order.ref) }}" class="card price-form" data-price-form
+            data-delivery-fee="{{ order.delivery_fee }}">
+        {{ csrf() }}
+        <input type="hidden" name="version" value="{{ order.version }}">
+        <div class="card-head">
+          <h2>Price This Order</h2>
+          <div class="actions" data-price-all hidden>
+            <span class="muted small">Set all to</span>
+            <button class="button button-small button-quiet" type="button" data-set-all="retail">Retail</button>
+            <button class="button button-small button-quiet" type="button" data-set-all="wholesale">Wholesale</button>
+          </div>
+        </div>
+        <table class="lines-table price-table">
+          <thead><tr><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col">Price</th><th scope="col" class="num">Amount</th></tr></thead>
+          <tbody>
+            {% for line in order.lines %}
+              <tr data-line data-quantity="{{ line.quantity }}" data-retail="{{ line.retail_price }}" data-wholesale="{{ line.wholesale_price }}">
+                <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}</span></th>
+                <td class="num">{{ line.quantity }}</td>
+                <td>
+                  <fieldset class="price-choice">
+                    <legend class="visually-hidden">Price for {{ line.product_name }}</legend>
+                    <label><input type="radio" name="line_{{ line.id }}" value="retail" checked><span>Retail {{ line.retail_price|peso }}</span></label>
+                    <label><input type="radio" name="line_{{ line.id }}" value="wholesale"{% if line.wholesale_price == line.retail_price %} disabled{% endif %}>
+                      <span>Wholesale {{ line.wholesale_price|peso }}</span></label>
+                  </fieldset>
+                </td>
+                <td class="num" data-line-total>{{ line.line_total|peso }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <dl class="sum-rows">
+          <div><dt>Items</dt><dd data-subtotal-text>{{ order.subtotal|peso }}</dd></div>
+          {% if order.fulfilment == 'delivery' %}<div><dt>Delivery fee ({{ order.area_name }})</dt><dd>{{ order.delivery_fee|peso }}</dd></div>{% endif %}
+          <div class="sum-total"><dt>Total</dt><dd data-total-text>{{ order.total|peso }}</dd></div>
+        </dl>
+        {{ textarea('cashier_note', 'Note for the shopper', hint='Optional', rows=2, attrs='maxlength="300" placeholder="Wholesale price for the cases. Thank you!"') }}
+        <div class="form-actions"><button class="button" type="submit">Confirm price</button></div>
+      </form>
+    {% else %}
+      <section class="card">
+        <h2>Items</h2>
+        {{ lines_table(order) }}
+        {% if order.cashier_note %}<p class="cashier-note"><strong>Note for the shopper:</strong> {{ order.cashier_note }}</p>{% endif %}
+      </section>
+    {% endif %}
+
+    <div>
+      <section class="card">
+        <h2>Shopper</h2>
+        <p><strong>{{ order.customer_name }}</strong><br>
+          {% if order.customer_mobile %}<a href="tel:{{ order.customer_mobile }}">{{ order.customer_mobile|mobile }}</a>{% endif %}</p>
+        <p>{{ FULFILMENTS[order.fulfilment] }}{% if order.fulfilment == 'delivery' %}: {{ order.address }}{% endif %}</p>
+        <p class="card-note">{{ PAYMENT_METHODS[order.payment_method] }}</p>
+        {% if order.note %}<p class="shopper-note"><strong>Note:</strong> {{ order.note }}</p>{% endif %}
+      </section>
+      <section class="card">
+        <h2>Timeline</h2>
+        {{ timeline(order) }}
+      </section>
+      {% if staff_can_cancel(order) and can(PRICE_ORDERS) %}
+        <form method="post" action="{{ url_for('staff_orders.cancel', ref=order.ref) }}" class="card stack"
+              data-confirm="Cancel order {{ order.ref }}? The shopper sees the reason, and the items go back on sale.">
+          {{ csrf() }}
+          <h2>Cancel This Order</h2>
+          {{ field('reason', 'Reason', hint='The shopper sees it', attrs='maxlength="300" required placeholder="Sorry, we ran out of this item."') }}
+          <div class="form-actions"><button class="button button-danger" type="submit">Cancel order</button></div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

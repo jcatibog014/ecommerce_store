@@ -9,13 +9,13 @@ PAGES = {
     "shopper": ["/", "/products", "/products?sort=new", "/cart", "/checkout", "/orders", "/favorites", "/addresses",
                 "/settings/"],
     "cashier": ["/counter", "/counter/shift", "/counter/shifts", "/manage/orders", "/manage/orders?tab=waiting",
-                "/manage/orders?tab=confirmed", "/manage/orders?tab=done", "/manage/orders?tab=cancelled",
-                "/manage/orders?tab=all", "/manage/packing", "/deliveries", "/manage/rider-cash", "/manage/products",
+                "/manage/orders?tab=done", "/manage/orders?tab=cancelled",
+                "/manage/orders?tab=all", "/manage/packing", "/manage/rider-cash", "/manage/products",
                 "/manage/products?show=low", "/manage/products?show=off", "/manage/categories", "/manage/stock",
                 "/settings/"],
     "rider": ["/deliveries", "/", "/settings/"],
     "owner": ["/manage/insights", "/manage/insights?range=30", "/manage/insights?range=90", "/manage/staff",
-              "/manage/store", "/manage/delivery-areas", "/manage/promos", "/manage/products/new",
+              "/settings/", "/manage/delivery-areas", "/manage/promos", "/manage/products/new",
               "/manage/products/import", "/counter/shifts"],
 }
 EMPTY = re.compile(r'<div class="empty-state[^"]*">\s*<h2>([^<]+)</h2>')

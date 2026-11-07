@@ -4,12 +4,12 @@
 {% block content %}
   <div class="page-head">
     <h1>Orders</h1>
-    <p class="page-sub">New online orders wait in To Price. Choose retail or wholesale, then the shopper sees the final total.</p>
+    <p class="page-sub">New online orders wait in To Price. Choose retail or wholesale, then the shopper sees the final total. Priced and paid orders go on to <a href="{{ url_for('fulfil.board') }}">Packing</a>.</p>
   </div>
   <nav class="tabs" aria-label="Which orders">
     {% for key, (label, statuses, _) in tabs.items() %}
       <a href="{{ url_for('staff_orders.index', tab=key if key != 'to-price' else None) }}"{% if tab == key %} aria-current="page"{% endif %}>
-        {{ label }}{% if statuses and tab_counts[key] and key in ('to-price', 'waiting', 'confirmed') %} <span class="badge{% if key != 'to-price' %} badge-quiet{% endif %}">{{ tab_counts[key] }}</span>{% endif %}</a>
+        {{ label }}{% if statuses and tab_counts[key] and key in ('to-price', 'waiting') %} <span class="badge{% if key != 'to-price' %} badge-quiet{% endif %}">{{ tab_counts[key] }}</span>{% endif %}</a>
     {% endfor %}
   </nav>
 

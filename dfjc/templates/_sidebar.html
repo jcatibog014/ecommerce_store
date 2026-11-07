@@ -24,7 +24,6 @@
           {% if can(COUNTER) %}{{ link('counter.index', 'Counter', endpoint.startswith('counter.')) }}{% endif %}
           {{ link('staff_orders.index', 'Orders', endpoint.startswith('staff_orders.'), to_price_count) }}
           {% if can(PACK_ORDERS) %}{{ link('fulfil.board', 'Packing', endpoint == 'fulfil.board', to_pack_count) }}{% endif %}
-          {{ link('fulfil.deliveries', 'Deliveries', endpoint == 'fulfil.deliveries', out_count) }}
           {% if can(RECEIVE_CASH) %}{{ link('fulfil.rider_cash', 'Rider Cash', endpoint == 'fulfil.rider_cash') }}{% endif %}
         </ul>
       {% elif can(SEE_DELIVERIES) %}
@@ -46,8 +45,7 @@
         <ul class="nav-links">
           {% if can(SEE_INSIGHTS) %}{{ link('insights.index', 'Insights', endpoint == 'insights.index') }}{% endif %}
           {% if can(MANAGE_STAFF) %}{{ link('staff.index', 'Staff', endpoint == 'staff.index') }}{% endif %}
-          {% if can(MANAGE_STORE) %}{{ link('staff.store', 'Store Details', endpoint == 'staff.store') }}
-            {{ link('staff.areas', 'Delivery Areas', endpoint in ('staff.areas', 'staff.save_area')) }}
+          {% if can(MANAGE_STORE) %}{{ link('staff.areas', 'Delivery Areas', endpoint in ('staff.areas', 'staff.save_area')) }}
             {{ link('extras.promos', 'Promos', endpoint.startswith('extras.')) }}{% endif %}
         </ul>
       {% endif %}

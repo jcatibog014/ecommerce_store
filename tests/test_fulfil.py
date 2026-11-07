@@ -140,6 +140,17 @@ def test_a_rider_delivers_and_holds_the_cash(app, client, cashier_id, rider_id, 
     assert "Cash with You: ₱90.00" in client.get("/deliveries").get_data(as_text=True)
 
 
+def test_staff_see_deliveries_on_the_packing_board(app, client, cashier_id, rider_id, delivery):
+    """Deliveries is the rider's page; the cashier sees what is out in Packing's last column."""
+    log_in_as(client, cashier_id)
+    out_with(client, app, delivery, rider_id)
+    response = client.get("/deliveries")
+    assert response.status_code == 302 and response.location.endswith("/manage/packing")
+    board = client.get("/manage/packing").get_data(as_text=True)
+    assert delivery.ref in board and "Out for Delivery" in board
+    assert ">Deliveries<" not in board  # not in the cashier's menu
+
+
 def test_another_rider_cant_finish_my_delivery(app, client, store_id, cashier_id, rider_id, delivery):
     other = make_user(app, store_id, "rider2@example.com", role="rider")
     log_in_as(client, cashier_id)

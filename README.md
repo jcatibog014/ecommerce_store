@@ -25,7 +25,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 
 - Sees new online orders in **Orders**, chooses **Retail** or **Wholesale** for each line (or all at once), and confirms the price. Then the shopper sees the final total.
 - For each asked-for item, chooses **We have it** (and types its price) or **Not available**.
-- Moves orders along the **Packing** board: To Pack, Packing, Ready, Out for Delivery. Starting to pack takes the items off the shelf.
+- Moves orders along the **Packing** board: To Pack, Packing, Ready, Out for Delivery (the orders out with a rider are here). Starting to pack takes the items off the shelf.
 - Hands over pickup orders (and takes the cash), or sends delivery orders out with a rider. Receives the riders' cash (**Rider Cash**).
 - Cancels an order with a reason, or gives the money back (a **refund**) for an order paid online.
 - Sells to walk-in customers at the **Counter**: type a name or scan a barcode, choose retail or wholesale, type the cash given, see the change, and print the receipt. A mistake can be voided.
@@ -42,7 +42,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 
 - (With the cashier) adds products with photos and sizes (like "Sachet", "Pack of 6" or "Case of 24"), with a **retail** and a **wholesale** price for each size. Many products can come at once from a spreadsheet (**Import from a file**).
 - (With the cashier) gives a product brands and kinds: the same product name with another brand or kind shows as **one card** in the shop. **Add another kind** copies a product with its sizes and prices, so only the brand, kind and stock need typing.
-- Sets up the store: details and opening hours, **Delivery Areas** and their fees, **Staff** (a one-time invite link for each cashier and rider), and **Promos** (voucher codes).
+- Sets up the store: its details and opening hours (in **Settings**), **Delivery Areas** and their fees, **Staff** (a one-time invite link for each cashier and rider), and **Promos** (voucher codes).
 - Sees **Insights** for the last 7, 30 or 90 days: sales per day (online and counter), the best sellers, how people paid, how much sold at the wholesale price, and what is running low.
 
 ## How an Order Works
@@ -123,7 +123,7 @@ This project practises **transactions**, **payments** and **order state**:
 | Owner: import products | ![Import from a CSV file](docs/screenshots/import.png) |
 | Owner: categories | ![Categories](docs/screenshots/categories.png) |
 | Owner: people and invite links | ![Staff and invite links](docs/screenshots/staff.png) |
-| Owner: store details | ![Store details](docs/screenshots/store-details.png) |
+| Owner: store details, in Settings | ![Store details in Settings](docs/screenshots/store-details.png) |
 | Owner: delivery areas | ![Barangays and delivery fees](docs/screenshots/delivery-areas.png) |
 | Owner: promos | ![Voucher codes and their uses](docs/screenshots/promos.png) |
 | Owner: cash shifts | ![Every shift, with the drawer's difference](docs/screenshots/shifts.png) |

@@ -150,14 +150,14 @@ STAFF_PAGES = {
         "/manage/products?show=off": ["Ice candy, buko"],
         "/manage/categories": ["Canned Goods", "Personal Care"],
         "/manage/orders": ["Marites Santos", "Ramon Garcia", "Ana Reyes", "Has bulk items"],
-        "/manage/orders?tab=confirmed": ["Marites Santos", "Ana Reyes"],
+        "/manage/packing": ["Marites Santos", "Ana Reyes"],
         "/manage/orders?tab=cancelled": ["Ramon Garcia", "Ana Reyes"],
         "/manage/orders?tab=all": ["Waiting for the cashier", "Confirmed", "Cancelled"],
     },
     "owner": {
         "/manage/products/new": ["First Unit"],
         "/manage/staff": ["Lorna Cruz", "Jun Dizon", "Used by Jun Dizon", "New cashier for the night shift"],
-        "/manage/store": ["123 Rizal Street"],
+        "/settings/": ["123 Rizal Street", "Save store details"],
         "/manage/delivery-areas": ["San Isidro", "Malinis"],
     },
 }

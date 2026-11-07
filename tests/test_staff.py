@@ -98,16 +98,37 @@ def test_the_staff_page_lists_people_and_links(owner, cashier_id, rider_id):
     assert "pill-cashier" in page and "pill-rider" in page
 
 
-def test_store_details(app, owner, store_id):
-    response = post(owner, "/manage/store", {"name": "DFJC Store", "tagline": "Wholesale and retail",
-                                            "address": "Poblacion", "phone": "0917 555 0123",
-                                            "hours": "Every day, 6 AM to 9 PM", "pickup_note": "At the counter"})
-    assert response.status_code == 302
+def store_form(**changes):
+    return {"action": "store", "store_name": "DFJC Store", "tagline": "Wholesale and retail",
+            "address": "Poblacion", "phone": "0917 555 0123", "hours": "Every day, 6 AM to 9 PM",
+            "pickup_note": "At the counter", **changes}
+
+
+def test_store_details_are_in_settings(app, owner, store_id):
+    page = owner.get("/settings/").get_data(as_text=True)
+    assert 'id="store"' in page and "Save store details" in page
+    response = post(owner, "/settings/", store_form())
+    assert response.status_code == 302 and response.location.endswith("/settings/#store")
     store = get(app, Store, store_id)
     assert (store.address, store.hours) == ("Poblacion", "Every day, 6 AM to 9 PM")
     home = owner.get("/").get_data(as_text=True)
-    assert "Every day, 6 AM to 9 PM" in home and "Poblacion" in home
-    assert post(owner, "/manage/store", {"name": ""}).status_code == 400
+    assert "Every day, 6 AM to 9 PM" in home and "Poblacion" in home and "0917 555 0123" in home
+    assert 'class="shop-footer"' not in home  # the sign shows them; no second copy below
+    bad = post(owner, "/settings/", store_form(store_name=""))
+    assert bad.status_code == 400 and "The store&#39;s name" in bad.get_data(as_text=True)
+
+
+def test_the_old_store_page_opens_settings(owner):
+    response = owner.get("/manage/store")
+    assert response.status_code == 302 and response.location.endswith("/settings/#store")
+    assert "Store Details" not in owner.get("/manage/staff").get_data(as_text=True)  # not in the menu
+
+
+def test_only_the_owner_has_store_details(client, cashier_id, store_id):
+    log_in_as(client, cashier_id)
+    assert 'id="store"' not in client.get("/settings/").get_data(as_text=True)
+    assert post(client, "/settings/", store_form()).status_code == 403
+    assert client.get("/manage/store").status_code == 403
 
 
 # ---------- Settings ----------

@@ -28,14 +28,15 @@ def only_product(app):
 
 # ---------- Who may open what ----------
 
-@pytest.mark.parametrize("url", ["/manage/products", "/manage/categories", "/manage/staff", "/manage/store"])
+@pytest.mark.parametrize("url", ["/manage/products", "/manage/categories", "/manage/staff",
+                                 "/manage/delivery-areas"])
 def test_visitors_are_asked_to_log_in(client, store_id, url):
     response = client.get(url)
     assert response.status_code == 302 and "/login" in response.location
 
 
 @pytest.mark.parametrize("url", ["/manage/products", "/manage/products/new", "/manage/categories",
-                                 "/manage/staff", "/manage/store"])
+                                 "/manage/staff", "/manage/delivery-areas"])
 def test_shoppers_and_riders_cant_open_staff_pages(client, shopper_id, rider_id, url):
     for user_id in (shopper_id, rider_id):
         log_in_as(client, user_id)

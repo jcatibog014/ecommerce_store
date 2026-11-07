@@ -448,4 +448,4 @@ def test_the_demo_shows_every_kind_of_payment(app):
     assert "Ana Reyes" in demo.get("/manage/orders?tab=waiting").get_data(as_text=True)
     cancelled = demo.get("/manage/orders?tab=cancelled").get_data(as_text=True)
     assert "Refunded" in cancelled and "Ramon Garcia" in cancelled
-    assert "Paid" in demo.get("/manage/orders?tab=confirmed").get_data(as_text=True)
+    assert "Paid online" in demo.get("/manage/packing").get_data(as_text=True)

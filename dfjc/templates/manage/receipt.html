@@ -61,11 +61,10 @@
       {% endif %}
       {% if sale.can_void %}
         {# Only the items chosen here are voided; the rest of the sale stays. #}
-        <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack void-form"
-              data-confirm="Void the items you chose? They go back in stock, and you give back their price.">
+        <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack void-form">
           {{ csrf() }}
           <h2>A Mistake?</h2>
-          <p class="card-note">Type how many of each item to void. Leave the rest at 0: they stay sold.</p>
+          <p class="card-note">Type how many of each item to void. Leave the rest at 0: they stay sold. Or void the whole sale with Void all.</p>
           <table class="lines-table void-lines">
             <thead><tr><th scope="col">Item</th><th scope="col" class="num">Each</th><th scope="col" class="num">Void how many</th></tr></thead>
             <tbody>
@@ -80,7 +79,13 @@
             </tbody>
           </table>
           {{ field('reason', 'Why void them?', attrs='maxlength="200" required placeholder="Rang up the wrong size"') }}
-          <div class="form-actions"><button class="button button-danger" type="submit">Void chosen items</button></div>
+          {# Void chosen items comes first, so pressing Enter in the reason never voids everything. #}
+          <div class="form-actions">
+            <button class="button button-danger" type="submit"
+                    data-confirm-button="Void the items you chose? They go back in stock, and you give back their price.">Void chosen items</button>
+            <button class="button button-quiet" type="submit" name="all" value="1"
+                    data-confirm-button="Void everything left on {{ sale.receipt_no }}? It all goes back in stock, and you give back {{ sale.kept_total|peso }}.">Void all</button>
+          </div>
         </form>
       {% endif %}
     </div>

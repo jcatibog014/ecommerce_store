@@ -175,9 +175,12 @@ def void(sale_id):
     if not reason:
         flash("Say why these items are voided.", "error")
         return redirect(url_for("counter.receipt", sale_id=sale.id))
-    # One number per item on the sale: how many of it to void (0 keeps it).
+    # One number per item on the sale: how many of it to void (0 keeps it). Void all: everything left.
     quantities = {}
     for line in sale.lines:
+        if request.form.get("all") == "1":
+            quantities[line.id] = line.kept_quantity
+            continue
         count = request.form.get(f"void_{line.id}", type=int) or 0
         if count < 0:
             count = 0

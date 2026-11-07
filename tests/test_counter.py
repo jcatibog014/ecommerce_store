@@ -229,6 +229,29 @@ def test_void_part_of_a_line_then_the_rest(app, at_counter, water, two_line_sale
     assert "VOIDED" in receipt and "Void chosen items" not in receipt
 
 
+def test_void_all_takes_back_everything_left(app, at_counter, water, two_line_sale):
+    page = at_counter.get(f"/counter/sales/{two_line_sale.id}").get_data(as_text=True)
+    assert 'name="all" value="1"' in page and "you give back ₱360.00" in page
+    void(at_counter, two_line_sale, "Two were broken", l0=2)  # first a part
+    page = at_counter.get(f"/counter/sales/{two_line_sale.id}").get_data(as_text=True)
+    assert "you give back ₱330.00" in page  # Void all now means what is left
+    response = post(at_counter, f"/counter/sales/{two_line_sale.id}/void",
+                    {"reason": "Customer changed their mind", "all": "1", f"void_{two_line_sale.lines[0].id}": "0"},
+                    follow_redirects=True)
+    text = response.get_data(as_text=True)
+    assert "give back 330.00 pesos" in text and "Nothing is left on it" in text
+    sale = last_sale(app)
+    assert sale.voided_at is not None and sale.voided_amount == sale.total
+    assert get(app, Product, water).stock_pieces == 100
+    assert "Void all" not in at_counter.get(f"/counter/sales/{sale.id}").get_data(as_text=True)
+
+
+def test_void_all_still_needs_a_reason(app, at_counter, water, two_line_sale):
+    response = post(at_counter, f"/counter/sales/{two_line_sale.id}/void", {"reason": "", "all": "1"},
+                    follow_redirects=True)
+    assert "Say why" in response.get_data(as_text=True) and last_sale(app).voided_amount == 0
+
+
 def test_never_more_than_was_sold(app, at_counter, water, two_line_sale):
     response = void(at_counter, two_line_sale, l0=5)
     assert "Only 4 of Bottled water 500 mL (Bottle)" in response.get_data(as_text=True)

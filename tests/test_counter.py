@@ -181,16 +181,90 @@ def test_change_a_line_to_wholesale_and_remove_lines(app, at_counter, water):
 
 # ---------- Void ----------
 
-def test_void_puts_the_stock_back_once(app, at_counter, water):
+def void(client, sale, reason="Wrong item", **counts):
+    """counts: {line index: how many}; e.g. void(client, sale, l0=2) voids 2 of the first line."""
+    form = {"reason": reason}
+    for key, count in counts.items():
+        form[f"void_{sale.lines[int(key[1:])].id}"] = str(count)
+    return post(client, f"/counter/sales/{sale.id}/void", form, follow_redirects=True)
+
+
+@pytest.fixture
+def two_line_sale(app, at_counter, water):
+    """4 bottles (15.00 each) and 1 case of 24 (300.00): 360.00, paid with 500."""
     ring(at_counter, unit_id(app, water, "Bottle"), 4)
-    post(at_counter, "/counter/pay", {"cash_given": "100", "ticket_key": ticket_key(at_counter)})
+    ring(at_counter, unit_id(app, water, "Case of 24"), 1)
+    post(at_counter, "/counter/pay", {"cash_given": "500", "ticket_key": ticket_key(at_counter)})
+    assert get(app, Product, water).stock_pieces == 100 - 4 - 24
+    return last_sale(app)
+
+
+def test_void_only_the_chosen_items(app, at_counter, water, two_line_sale):
+    page = at_counter.get(f"/counter/sales/{two_line_sale.id}").get_data(as_text=True)
+    assert "Void how many" in page and "Void chosen items" in page
+    response = void(at_counter, two_line_sale, "Rang up a case instead of a bottle", l1=1)
+    assert "give back 300.00 pesos" in response.get_data(as_text=True)
+    assert "The rest of the sale stays: 60.00 pesos" in response.get_data(as_text=True)
     sale = last_sale(app)
-    assert get(app, Product, water).stock_pieces == 96
-    post(at_counter, f"/counter/sales/{sale.id}/void", {"reason": "Wrong item"})
-    assert get(app, Product, water).stock_pieces == 100 and last_sale(app).voided_at is not None
-    post(at_counter, f"/counter/sales/{sale.id}/void", {"reason": "Again"})
-    assert get(app, Product, water).stock_pieces == 100  # not twice
-    assert "VOIDED: Wrong item" in at_counter.get(f"/counter/sales/{sale.id}").get_data(as_text=True)
+    assert (sale.voided_amount, sale.kept_total, sale.voided_at) == (30000, 6000, None)
+    assert [line.voided_quantity for line in sale.lines] == [0, 1]
+    assert get(app, Product, water).stock_pieces == 100 - 4  # the case is back on the shelf, the bottles aren't
+    receipt = at_counter.get(f"/counter/sales/{sale.id}").get_data(as_text=True)
+    assert "1 x Bottled water 500 mL (Case of 24)" in receipt and "Rang up a case instead of a bottle" in receipt
+    assert "₱300.00 given back</strong> for voided items. The sale is now ₱60.00" in receipt
+    assert "VOIDED" not in receipt and "Void chosen items" in receipt  # the bottles can still be voided
+
+
+def test_void_part_of_a_line_then_the_rest(app, at_counter, water, two_line_sale):
+    void(at_counter, two_line_sale, "Two were broken", l0=2)
+    sale = last_sale(app)
+    assert (sale.lines[0].voided_quantity, sale.voided_amount) == (2, 3000)
+    assert get(app, Product, water).stock_pieces == 100 - 2 - 24
+    assert "Voided 2" in at_counter.get(f"/counter/sales/{sale.id}").get_data(as_text=True)
+    void(at_counter, sale, "Customer changed their mind", l0=2, l1=1)
+    sale = last_sale(app)
+    assert sale.voided_at is not None and sale.voided_amount == sale.total and sale.kept_total == 0
+    assert get(app, Product, water).stock_pieces == 100
+    receipt = at_counter.get(f"/counter/sales/{sale.id}").get_data(as_text=True)
+    assert "VOIDED" in receipt and "Void chosen items" not in receipt
+
+
+def test_never_more_than_was_sold(app, at_counter, water, two_line_sale):
+    response = void(at_counter, two_line_sale, l0=5)
+    assert "Only 4 of Bottled water 500 mL (Bottle)" in response.get_data(as_text=True)
+    void(at_counter, two_line_sale, l0=4)
+    again = void(at_counter, two_line_sale, l0=1)  # pressed twice, or an old page
+    assert "Only 0 of" in again.get_data(as_text=True)
+    assert get(app, Product, water).stock_pieces == 100 - 24  # the 4 bottles went back once
+    assert last_sale(app).voided_amount == 6000
+
+
+def test_void_needs_items_and_a_reason(app, at_counter, water, two_line_sale):
+    assert "Choose the items to void" in void(at_counter, two_line_sale).get_data(as_text=True)
+    assert "Say why" in void(at_counter, two_line_sale, reason="", l0=1).get_data(as_text=True)
+    assert last_sale(app).voided_amount == 0 and get(app, Product, water).stock_pieces == 72
+
+
+def test_two_voids_at_once_never_give_back_too_much(app, at_counter, water, two_line_sale):
+    """Two cashiers void the same 3 of 4 bottles at the same moment: only one void goes through."""
+    from sqlalchemy.exc import OperationalError
+    with app.app_context():
+        engine = db.engine()
+        first, second = Session(engine), Session(engine)
+        try:
+            cashier = first.get(User, two_line_sale.cashier_id)
+            sale_a, sale_b = first.get(WalkinSale, two_line_sale.id), second.get(WalkinSale, two_line_sale.id)
+            line = sale_a.lines[0].id
+            counter.void(first, sale_a, cashier, utcnow(), "a", {line: 3})
+            first.commit()
+            with pytest.raises((counter.CounterProblem, OperationalError)):
+                counter.void(second, sale_b, cashier, utcnow(), "b", {line: 3})
+                second.commit()
+            second.rollback()
+        finally:
+            first.close()
+            second.close()
+    assert last_sale(app).lines[0].voided_quantity == 3 and get(app, Product, water).stock_pieces == 75
 
 
 # ---------- Closing the drawer ----------
@@ -212,10 +286,20 @@ def test_closing_a_shift_counts_the_drawer(app, at_counter, water):
 def test_a_voided_sale_doesnt_count_in_the_drawer(app, at_counter, water):
     ring(at_counter, unit_id(app, water, "Bottle"), 2)
     post(at_counter, "/counter/pay", {"cash_given": "50", "ticket_key": ticket_key(at_counter)})
-    post(at_counter, f"/counter/sales/{last_sale(app).id}/void", {"reason": "Oops"})
+    void(at_counter, last_sale(app), "Oops", l0=2)
     with app.app_context():
         s = db.session()
         assert counter.summary(s, s.scalar(select(CashShift)), utcnow())["expected"] == 100000
+
+
+def test_a_part_voided_sale_counts_what_was_kept(app, at_counter, water, two_line_sale):
+    void(at_counter, two_line_sale, l1=1)
+    with app.app_context():
+        s = db.session()
+        summary = counter.summary(s, s.scalar(select(CashShift)), utcnow())
+    assert (summary["sales"], summary["sale_count"], summary["expected"]) == (6000, 1, 106000)
+    page = at_counter.get("/counter").get_data(as_text=True)
+    assert "Part voided" in page and "₱300.00 voided" in page
 
 
 def test_another_stores_receipt_is_not_found(app, at_counter, water, store_id):
@@ -242,7 +326,7 @@ def test_the_demo_counter_has_examples(app):
     post(demo, "/demo")
     post(demo, "/demo/view-as", {"role": "cashier"})
     page = demo.get("/counter").get_data(as_text=True)
-    assert "This Shift" in page and "Voided" in page and "Wholesale" in page
+    assert "This Shift" in page and "Part voided" in page and "Wholesale" in page
     shifts = demo.get("/counter/shifts").get_data(as_text=True)
     assert "Open now" in shifts
     post(demo, "/demo/view-as", {"role": "owner"})

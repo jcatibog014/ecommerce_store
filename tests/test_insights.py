@@ -44,7 +44,7 @@ def test_the_report_counts_only_real_sales(app, client, store_id, shopper_id, ca
         counter.sell(s, store, shift, cashier, [[unit_id(app, soap, "Bar"), 2, "retail"]], 10000, "k1", utcnow())
         voided, _ = counter.sell(s, store, shift, cashier, [[unit_id(app, water, "Bottle"), 10, "retail"]], 20000,
                                  "k2", utcnow())
-        counter.void(s, voided, cashier, utcnow(), "oops")
+        counter.void(s, voided, cashier, utcnow(), "oops", {line.id: line.quantity for line in voided.lines})
         s.commit()
         report = insights.report(s, store, 7)
     now = report["now"]

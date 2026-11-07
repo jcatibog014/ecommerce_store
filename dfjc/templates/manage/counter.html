@@ -105,11 +105,11 @@
         <tbody>
           {% for sale in recent %}
             <tr data-href="{{ url_for('counter.receipt', sale_id=sale.id) }}"{% if sale.voided_at %} class="is-voided"{% endif %}>
-              <th scope="row"><a class="row-link" href="{{ url_for('counter.receipt', sale_id=sale.id) }}">{{ sale.receipt_no }}</a>{% if sale.voided_at %} <span class="pill pill-off">Voided</span>{% endif %}</th>
+              <th scope="row"><a class="row-link" href="{{ url_for('counter.receipt', sale_id=sale.id) }}">{{ sale.receipt_no }}</a>{% if sale.voided_at %} <span class="pill pill-off">Voided</span>{% elif sale.voided_amount %} <span class="pill pill-off">Part voided</span>{% endif %}</th>
               <td>{{ sale.created_at|nice_time }}</td>
-              <td>{{ sale.lines|sum(attribute='quantity') }}</td>
+              <td>{{ sale.lines|sum(attribute='kept_quantity') if not sale.voided_at else sale.lines|sum(attribute='quantity') }}</td>
               <td>{{ PRICE_TYPES[sale.price_type] }}</td>
-              <td class="num">{{ sale.total|peso }}</td>
+              <td class="num">{{ (sale.kept_total if not sale.voided_at else sale.total)|peso }}{% if sale.voided_amount and not sale.voided_at %}<span class="row-sub">{{ sale.voided_amount|peso }} voided</span>{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>

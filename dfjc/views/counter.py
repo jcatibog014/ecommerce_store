@@ -173,16 +173,25 @@ def void(sale_id):
     sale = get_in_store(s, WalkinSale, sale_id, g.store)
     reason, _ = forms.text(request.form, "reason", 200)
     if not reason:
-        flash("Say why the sale is voided.", "error")
+        flash("Say why these items are voided.", "error")
         return redirect(url_for("counter.receipt", sale_id=sale.id))
+    # One number per item on the sale: how many of it to void (0 keeps it).
+    quantities = {}
+    for line in sale.lines:
+        count = request.form.get(f"void_{line.id}", type=int) or 0
+        if count < 0:
+            count = 0
+        quantities[line.id] = min(count, counter.MAX_QUANTITY)
     try:
-        counter.void(s, sale, g.user, utcnow(), reason)
+        record = counter.void(s, sale, g.user, utcnow(), reason, quantities)
         s.commit()
     except CounterProblem as trouble:
         s.rollback()
         flash(str(trouble), "error")
         return redirect(url_for("counter.receipt", sale_id=sale.id))
-    flash(f"{sale.receipt_no} is voided. Its items are back in stock; give back {sale.total / 100:,.2f} pesos.")
+    rest = ("Nothing is left on it." if sale.voided_at else
+            f"The rest of the sale stays: {sale.kept_total / 100:,.2f} pesos.")
+    flash(f"Voided {record.items}. Back in stock; give back {record.amount / 100:,.2f} pesos. {rest}")
     return redirect(url_for("counter.receipt", sale_id=sale.id))
 
 

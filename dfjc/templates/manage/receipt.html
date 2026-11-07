@@ -14,15 +14,24 @@
         {% if g.store.phone %}<span>{{ g.store.phone }}</span>{% endif %}
       </header>
       <p class="receipt-meta">{{ sale.receipt_no }} · {{ sale.created_at|nice_datetime }}<br>Cashier: {{ sale.cashier.first_name if sale.cashier else '' }}</p>
-      {% if sale.voided_at %}<p class="receipt-void">VOIDED: {{ sale.void_reason }}</p>{% endif %}
+      {% if sale.voided_at %}<p class="receipt-void">VOIDED</p>{% endif %}
       <table class="receipt-lines">
         {% for line in sale.lines %}
-          <tr><td colspan="2">{{ line.product_name }} ({{ line.unit_name }}){% if line.price_type == 'wholesale' %} W{% endif %}</td></tr>
-          <tr><td class="receipt-qty">{{ line.quantity }} x {{ line.unit_price|peso }}</td><td class="num">{{ line.line_total|peso }}</td></tr>
+          <tr{% if not line.kept_quantity %} class="is-voided"{% endif %}><td colspan="2">{{ line.product_name }} ({{ line.unit_name }}){% if line.price_type == 'wholesale' %} W{% endif %}</td></tr>
+          <tr{% if not line.kept_quantity %} class="is-voided"{% endif %}><td class="receipt-qty">{{ line.quantity }} x {{ line.unit_price|peso }}</td><td class="num">{{ line.line_total|peso }}</td></tr>
+          {% if line.voided_quantity and line.kept_quantity %}
+            <tr class="receipt-voided-line"><td class="receipt-qty">Voided {{ line.voided_quantity }}</td><td class="num">-{{ (line.voided_quantity * line.unit_price)|peso }}</td></tr>
+          {% endif %}
         {% endfor %}
       </table>
       <dl class="receipt-sums">
-        <div><dt>Total</dt><dd>{{ sale.total|peso }}</dd></div>
+        {% if sale.voided_amount %}
+          <div><dt>Total</dt><dd>{{ sale.kept_total|peso }}</dd></div>
+          <div><dt>Was</dt><dd>{{ sale.total|peso }}</dd></div>
+          <div><dt>Voided</dt><dd>-{{ sale.voided_amount|peso }}</dd></div>
+        {% else %}
+          <div><dt>Total</dt><dd>{{ sale.total|peso }}</dd></div>
+        {% endif %}
         <div><dt>Cash</dt><dd>{{ sale.cash_given|peso }}</dd></div>
         <div><dt>Change</dt><dd>{{ sale.change|peso }}</dd></div>
       </dl>
@@ -33,18 +42,45 @@
       <div class="callout callout-good">
         <h2>Change: {{ sale.change|peso }}</h2>
         <p>Total {{ sale.total|peso }}, cash {{ sale.cash_given|peso }}.</p>
+        {% if sale.voided_amount %}<p><strong>{{ sale.voided_amount|peso }} given back</strong> for voided items. The sale is now {{ sale.kept_total|peso }}.</p>{% endif %}
         <div class="actions">
           <button class="button" type="button" data-print hidden>Print receipt</button>
           <a class="button button-quiet" href="{{ url_for('counter.index') }}">Next customer</a>
         </div>
       </div>
-      {% if not sale.voided_at and not sale.shift.closed_at %}
-        <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack"
-              data-confirm="Void {{ sale.receipt_no }}? Its items go back in stock, and you give back {{ sale.total|peso }}.">
+      {% if sale.voids %}
+        <section class="card">
+          <h2>Voided</h2>
+          <ul class="plain-list void-list">
+            {% for record in sale.voids %}
+              <li><strong>{{ record.items }}</strong>: {{ record.amount|peso }} given back
+                <span class="row-sub">{{ record.reason }} · {{ record.created_at|nice_datetime }}{% if record.by %} · {{ record.by.first_name }}{% endif %}</span></li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+      {% if sale.can_void %}
+        {# Only the items chosen here are voided; the rest of the sale stays. #}
+        <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack void-form"
+              data-confirm="Void the items you chose? They go back in stock, and you give back their price.">
           {{ csrf() }}
           <h2>A Mistake?</h2>
-          {{ field('reason', 'Why void it?', attrs='maxlength="200" required placeholder="Rang up the wrong size"') }}
-          <div class="form-actions"><button class="button button-danger" type="submit">Void sale</button></div>
+          <p class="card-note">Type how many of each item to void. Leave the rest at 0: they stay sold.</p>
+          <table class="lines-table void-lines">
+            <thead><tr><th scope="col">Item</th><th scope="col" class="num">Each</th><th scope="col" class="num">Void how many</th></tr></thead>
+            <tbody>
+              {% for line in sale.lines if line.kept_quantity %}
+                <tr>
+                  <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }} · {{ line.kept_quantity }} sold{% if line.price_type == 'wholesale' %} · wholesale{% endif %}</span></th>
+                  <td class="num">{{ line.unit_price|peso }}</td>
+                  <td class="num"><label class="visually-hidden" for="void-{{ line.id }}">Void how many {{ line.product_name }} ({{ line.unit_name }})</label>
+                    <input class="void-count" id="void-{{ line.id }}" type="number" name="void_{{ line.id }}" value="0" min="0" max="{{ line.kept_quantity }}" inputmode="numeric"></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {{ field('reason', 'Why void them?', attrs='maxlength="200" required placeholder="Rang up the wrong size"') }}
+          <div class="form-actions"><button class="button button-danger" type="submit">Void chosen items</button></div>
         </form>
       {% endif %}
     </div>

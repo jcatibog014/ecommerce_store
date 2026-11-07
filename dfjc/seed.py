@@ -479,8 +479,11 @@ def fill_counter(s, store, people, units, moment):
          moment - 2 * hours)
     sale(shift, ana, [line("Corned beef 150 g", "Case of 48", 1, WHOLESALE),
                       line("Laundry powder 70 g", "Strip of 6", 10, WHOLESALE)], 3000, moment - 90 * timedelta(minutes=1))
-    oops = sale(shift, ana, [line("Cola 1.5 L", "Case of 12", 1)], 1000, moment - hours)
-    counter.void(s, oops, ana, moment - hours + 3 * timedelta(minutes=1), "Rang up a case instead of one bottle")
+    oops = sale(shift, ana, [line("Cola 1.5 L", "Case of 12", 1), line("Corn chips 100 g", "Bag", 2)], 1000,
+                moment - hours)
+    case = next(item for item in oops.lines if item.unit_name == "Case of 12")
+    counter.void(s, oops, ana, moment - hours + 3 * timedelta(minutes=1), "Rang up a case instead of one bottle",
+                 {case.id: 1})
     sale(shift, ana, [line("Cola 1.5 L", "Bottle", 1), line("Corn chips 100 g", "Bag", 2)], 200,
          moment - hours + 5 * timedelta(minutes=1))
     s.flush()

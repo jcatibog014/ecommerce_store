@@ -157,7 +157,7 @@ def shoot_sandbox(page):
 
 
 def shoot_counter(page):
-    """The counter with a sale rung up, then its receipt."""
+    """The counter with a sale rung up, its receipt, then the same receipt with 2 candles voided."""
     view_as(page, "cashier")
     page.goto(f"{BASE}/counter?q=pancit")
     page.locator(".counter-unit", has_text="Box of 72").first.get_by_role("button", name="Wholesale").click()
@@ -171,6 +171,13 @@ def shoot_counter(page):
     page.get_by_role("button", name="Pay and print receipt").click()
     page.wait_for_url("**/counter/sales/**")
     save(page, "receipt.png")
+    # Void only some items: 2 of the 4 candles. The form asks "are you sure?" first (app.js).
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.locator(".void-lines tr", has_text="Candles").locator("input.void-count").fill("2")
+    page.locator('.void-form input[name="reason"]').fill("Two candles were broken")
+    page.get_by_role("button", name="Void chosen items").click()
+    page.wait_for_load_state()
+    save(page, "receipt-void.png")
 
 
 def shoot_ask_for(page):

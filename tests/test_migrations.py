@@ -45,3 +45,30 @@ def test_the_database_refuses_impossible_stock(tmp_path):
                 "INSERT INTO products (store_id, name, description, is_active, stock_pieces, reserved_pieces, "
                 "low_stock_pieces, version, created_at, updated_at) "
                 "VALUES (1, 'P', '', 1, 2, 5, 0, 1, '2026-11-05', '2026-11-05')")
+
+
+def test_a_sale_voided_whole_before_0009_keeps_its_void(tmp_path):
+    """Before 0009 a void took the whole sale; after it, each item is voided and the reason moves."""
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "void.sqlite"), "DATABASE_URL": None})
+    with app.app_context():
+        db.upgrade_db("0008")
+        with db.engine().begin() as connection:
+            run = connection.exec_driver_sql
+            run("INSERT INTO stores (id, name, tagline, address, phone, hours, pickup_note, is_demo, created_at) "
+                "VALUES (1, 'S', '', '', '', '', '', 0, '2026-11-05')")
+            run("INSERT INTO cash_shifts (id, store_id, opening_cash, opened_at, note) VALUES (1, 1, 0, '2026-11-05', '')")
+            for sale_id, voided_at, reason in ((1, "'2026-11-05 10:00'", "'Wrong size'"), (2, "NULL", "''")):
+                run(f"INSERT INTO walkin_sales (id, store_id, shift_id, price_type, total, cash_given, change, "
+                    f"ticket_key, voided_at, void_reason, created_at) VALUES ({sale_id}, 1, 1, 'retail', 3000, 5000, "
+                    f"2000, 'k{sale_id}', {voided_at}, {reason}, '2026-11-05 09:00')")
+                run(f"INSERT INTO walkin_lines (sale_id, product_name, unit_name, pieces_per_unit, quantity, pieces, "
+                    f"price_type, unit_price, line_total) VALUES ({sale_id}, 'Water', 'Bottle', 1, 2, 2, 'retail', "
+                    f"1500, 3000)")
+        db.upgrade_db()
+        with db.engine().connect() as connection:
+            run = connection.exec_driver_sql
+            assert run("SELECT id, voided_amount FROM walkin_sales ORDER BY id").fetchall() == [(1, 3000), (2, 0)]
+            assert run("SELECT sale_id, voided_quantity FROM walkin_lines ORDER BY sale_id").fetchall() == [
+                (1, 2), (2, 0)]
+            assert run("SELECT sale_id, items, amount, reason FROM walkin_voids").fetchall() == [
+                (1, "Every item", 3000, "Wrong size")]

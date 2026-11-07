@@ -346,7 +346,20 @@ function setUpInstall() {
   window.addEventListener("appinstalled", () => { button.hidden = true; done.hidden = false; });
 }
 
+// Packing's Send out: the button wakes up once a rider is chosen.
+function setUpSendOut() {
+  document.querySelectorAll(".send-form").forEach((form) => {
+    const select = form.querySelector("select");
+    const button = form.querySelector("button");
+    if (!select || !button || button.disabled) return;  // no riders at all: it stays off
+    const sync = () => { button.disabled = !select.value; };
+    sync();
+    select.addEventListener("change", sync);
+  });
+}
+
 setUpTheme();
+setUpSendOut();
 setUpChartTips();
 setUpInstall();
 setUpChange();

@@ -45,6 +45,7 @@ def index():
         # A scanned barcode: straight onto the ticket, one piece at retail.
         try:
             save_ticket(counter.add_line(ticket(), exact.id, 1, RETAIL))
+            session["just_added"] = counter.line_index(ticket(), exact.id, RETAIL)
             flash(f"Added {exact.product.name} ({exact.name}).")
         except CounterProblem as problem:
             flash(str(problem), "error")
@@ -54,7 +55,7 @@ def index():
                        .order_by(WalkinSale.id.desc()).limit(8)).all()
     return render_template("manage/counter.html", shift=shift, q=q, found=found, lines=lines,
                            total=sum(line["line_total"] for line in lines), key=ticket_key(), recent=recent,
-                           summary=counter.summary(s, shift, utcnow()))
+                           summary=counter.summary(s, shift, utcnow()), just_added=session.pop("just_added", None))
 
 
 @bp.post("/open")
@@ -87,6 +88,8 @@ def add():
         return here()
     try:
         save_ticket(counter.add_line(ticket(), unit.id, quantity, request.form.get("price_type")))
+        # The line lights up once, so the cashier sees it went on (and doesn't scan it twice).
+        session["just_added"] = counter.line_index(ticket(), unit.id, request.form.get("price_type"))
     except CounterProblem as trouble:
         flash(str(trouble), "error")
     return here()

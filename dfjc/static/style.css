@@ -254,6 +254,7 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .3rem 1.25rem; padding: .3rem 1rem; background: var(--ink); color: var(--bg); font-size: .86rem; }
 .demo-bar p { margin: 0; }
 .view-as { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.view-as label { display: inline-flex; align-items: center; gap: .35rem; }
 .view-as select { min-height: 1.9rem; padding: .1rem .5rem; border-radius: var(--radius-small); border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink); font: inherit; }
 @media (max-width: 30rem) { .demo-bar-more { display: none; } }
 
@@ -408,6 +409,7 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .shop-header-inner { max-width: 110rem; margin: 0 auto; padding: .75rem clamp(1rem, 3vw, 2.5rem); display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem; }
 .shop-search { flex: 1 1 18rem; display: flex; max-width: 40rem; }
 .shop-search input { flex: 1; min-width: 0; min-height: var(--control-height); padding: .45rem .8rem; border: 1px solid var(--rule-strong); border-right: 0; border-radius: var(--radius-small) 0 0 var(--radius-small); background: var(--surface-soft); color: var(--ink); font: inherit; }
+.shop-search input:hover { border-color: var(--link); }
 .shop-search input:focus { outline: 2px solid var(--accent-ring); border-color: var(--link); background: var(--surface); }
 .shop-search-button { display: inline-flex; align-items: center; justify-content: center; width: 3rem; border: 1px solid var(--accent); border-radius: 0 var(--radius-small) var(--radius-small) 0; background: var(--accent); color: var(--on-accent); cursor: pointer; }
 .shop-search-button:hover { background: var(--accent-hover); }
@@ -669,8 +671,13 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .row-link { color: var(--ink); text-decoration: none; }
 .row-link:hover { color: var(--link-hover); text-decoration: underline; }
 .row-sub { display: block; font-size: .84rem; font-weight: 400; color: var(--ink-soft); }
-.unit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .92rem; }
-.unit-list .is-off { color: var(--ink-soft); text-decoration: line-through; }
+/* Sizes and prices in two straight columns, one size per row. */
+.unit-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content max-content; gap: .15rem 1rem; font-size: .92rem; }
+.unit-list li { display: contents; }
+.unit-list strong { text-align: right; }
+.unit-list .is-off > * { color: var(--ink-soft); text-decoration: line-through; }
+.data-table tr.is-out > * { background: var(--red-soft); }
+.data-table tr.is-out .stock-out { background: var(--surface); }
 .data-table .stock { margin-left: .4rem; }
 
 .product-admin { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.25rem; align-items: start; }
@@ -868,6 +875,13 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
   .area-row .field-label, .area-on { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .area-row .check { min-height: var(--control-height); }
 }
+/* An on/off switch (Delivery Areas). A real checkbox underneath, so keyboards and forms work as usual. */
+.switch { appearance: none; position: relative; flex: 0 0 auto; width: 2.6rem !important; height: 1.45rem !important; margin: 0; border-radius: 999px; background: var(--rule-strong); cursor: pointer; transition: background .15s; }
+.switch::before { content: ""; position: absolute; top: .15rem; left: .15rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / .25); transition: transform .15s; }
+.switch:checked { background: var(--green); }
+.switch:checked::before { transform: translateX(1.15rem); }
+.switch:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+@media (forced-colors: active) { .switch { appearance: auto; } .switch::before { display: none; } }
 
 /* ---------- Packing, deliveries and stock ---------- */
 
@@ -939,6 +953,16 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .ticket-what { grid-area: what; min-width: 0; }
 .ticket-total { grid-area: total; font-weight: 700; white-space: nowrap; }
 .ticket-qty { grid-area: qty; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; margin: 0; font-size: .9rem; }
+.ticket-line { grid-template-areas: "what total" "qty remove"; }
+.ticket-qty { gap: .4rem .5rem; }
+.ticket .qty-input { width: 3.5rem; }
+.ticket-remove { grid-area: remove; justify-self: end; align-self: center; margin: 0; font-size: .9rem; }
+/* The line just added lights up green, then fades, so the cashier sees it went on. */
+.ticket-line.is-new { background: var(--green-soft); box-shadow: inset 4px 0 0 var(--green); padding-left: .6rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .ticket-line.is-new { animation: just-added 2.4s ease-out forwards; }
+}
+@keyframes just-added { 0%, 40% { background: var(--green-soft); } 100% { background: transparent; } }
 .danger-link { color: var(--red); }
 .pay-box { margin-top: .5rem; }
 .pay-box .money-input input { font-size: 1.25rem; min-height: 3rem; }
@@ -967,7 +991,7 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 /* Voiding item by item: a voided line is crossed out; a part-voided one says how many. */
 .receipt-lines tr.is-voided td { text-decoration: line-through; color: #666; }
 .receipt-voided-line td { color: #b00; }
-.void-lines .void-count { width: 5rem; text-align: right; }
+.void-lines .void-count { width: 5rem; min-height: 2rem; padding: .15rem .4rem; border: 1px solid var(--rule-strong); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); font: inherit; text-align: right; }
 .void-list li { padding: .35rem 0; }
 @media print {
   body { background: #fff !important; }
@@ -1039,3 +1063,18 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 
 /* Thin scrollbars in the theme's colours, wherever something scrolls. */
 * { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }
+
+/* Stock History: one product's history, and how many there are. */
+.history-search { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem .75rem; margin: 1rem 0 .5rem; }
+.history-search .field { flex: 1 1 16rem; max-width: 28rem; }
+.history-search .link-button { align-self: center; }
+.history-count { margin: .25rem 0 .5rem; }
+/* Rider Cash: the old handovers fold away. */
+.history-details { margin-top: 1.5rem; }
+.history-details > summary { cursor: pointer; list-style-position: inside; }
+.history-details > summary h2 { display: inline; }
+.history-details[open] > summary { margin-bottom: .75rem; }
+/* Orders: the Price order button sits at the end of its row. */
+.row-action { text-align: right; white-space: nowrap; }
+/* The menu's own scrollbar is easy to grab on short screens. */
+@media (min-width: 56rem) { .sidebar { scrollbar-width: auto; } }

@@ -7,12 +7,21 @@
     <p class="page-sub">Every change to stock: what, why, how many and who. The newest first.</p>
   </div>
   <nav class="tabs" aria-label="Why stock changed">
-    <a href="{{ url_for('manage.stock_history') }}"{% if not reason %} aria-current="page"{% endif %}>All</a>
+    <a href="{{ url_for('manage.stock_history', q=q or None) }}"{% if not reason %} aria-current="page"{% endif %}>All</a>
     {% for value, label in reasons.items() %}
-      <a href="{{ url_for('manage.stock_history', reason=value) }}"{% if reason == value %} aria-current="page"{% endif %}>{{ label }}</a>
+      <a href="{{ url_for('manage.stock_history', reason=value, q=q or None) }}"{% if reason == value %} aria-current="page"{% endif %}>{{ label }}</a>
     {% endfor %}
   </nav>
+  {# One product's history: type part of its name. #}
+  <form method="get" class="history-search" role="search">
+    {% if reason %}<input type="hidden" name="reason" value="{{ reason }}">{% endif %}
+    <label class="field"><span class="field-label">Product</span>
+      <input type="search" name="q" value="{{ q }}" maxlength="80" placeholder="Like: water, or coffee Barako"></label>
+    <button class="button button-quiet" type="submit">Show</button>
+    {% if q %}<a class="link-button" href="{{ url_for('manage.stock_history', reason=reason) }}">Every product</a>{% endif %}
+  </form>
   {% if moves %}
+    <p class="muted small history-count">Showing {{ first }}&ndash;{{ last }} of {{ '{:,}'.format(total) }}</p>
     <div class="table-card">
       <table class="data-table">
         <thead><tr><th scope="col">When</th><th scope="col">Product</th><th scope="col">Why</th><th scope="col" class="num">Change</th><th scope="col" class="num">After</th><th scope="col">By</th></tr></thead>
@@ -30,6 +39,15 @@
         </tbody>
       </table>
     </div>
+    {% if pages > 1 %}
+      <nav class="pager" aria-label="Pages">
+        {% if page > 1 %}<a class="button button-quiet" href="{{ url_for('manage.stock_history', reason=reason, q=q or None, page=page - 1) }}">Newer</a>{% endif %}
+        <span class="muted">Page {{ page }} of {{ pages }}</span>
+        {% if page < pages %}<a class="button button-quiet" href="{{ url_for('manage.stock_history', reason=reason, q=q or None, page=page + 1) }}">Older</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% elif q %}
+    {{ empty('Nothing Found', 'No stock changes for a product named like "' ~ q ~ '".') }}
   {% else %}
     {{ empty('Nothing Here Yet', 'Restocks, stock counts and packed orders show up here.') }}
   {% endif %}

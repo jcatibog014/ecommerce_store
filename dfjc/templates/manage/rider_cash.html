@@ -35,8 +35,9 @@
     {{ empty('No Cash to Receive', 'When a rider collects cash on delivery, it shows here until they hand it over.') }}
   {% endif %}
   {% if history %}
-    <h2>Received Before</h2>
-    <div class="table-card">
+    <details class="history-details">
+      <summary><h2>Received Before <span class="badge badge-quiet">{{ history|length }}</span></h2></summary>
+      <div class="table-card">
       <table class="data-table">
         <thead><tr><th scope="col">When</th><th scope="col">Rider</th><th scope="col">Received by</th><th scope="col" class="num">Amount</th></tr></thead>
         <tbody>
@@ -46,6 +47,7 @@
           {% endfor %}
         </tbody>
       </table>
-    </div>
+      </div>
+    </details>
   {% endif %}
 {% endblock %}

@@ -18,7 +18,9 @@
       <table class="data-table">
         <thead>
           <tr><th scope="col">Order</th><th scope="col">Shopper</th><th scope="col">Placed</th><th scope="col">How</th>
-            <th scope="col" class="num">Items</th><th scope="col" class="num">Total</th><th scope="col">Status</th></tr>
+            <th scope="col" class="num">Items</th><th scope="col" class="num">Total</th>
+            {# In To Price every order waits for the cashier, so the column holds the button instead. #}
+            <th scope="col"{% if tab == 'to-price' %} class="row-action"{% endif %}>{{ 'Next step' if tab == 'to-price' else 'Status' }}</th></tr>
         </thead>
         <tbody>
           {% for order in orders_found %}
@@ -32,7 +34,11 @@
               <td>{{ 'Pickup' if order.fulfilment == 'pickup' else 'Delivery' }}{% if order.area_name %}<span class="row-sub">{{ order.area_name }}</span>{% endif %}</td>
               <td class="num">{{ order.item_count }}</td>
               <td class="num">{{ order.total|peso }}{% if not order.is_priced and order.status == 'placed' %}<span class="row-sub">at retail</span>{% endif %}</td>
-              <td>{{ status_pill(order) }}</td>
+              {% if tab == 'to-price' %}
+                <td class="row-action"><a class="button button-small" href="{{ url_for('staff_orders.detail', ref=order.ref) }}">Price order<span class="visually-hidden"> {{ order.ref }}</span></a></td>
+              {% else %}
+                <td>{{ status_pill(order) }}</td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

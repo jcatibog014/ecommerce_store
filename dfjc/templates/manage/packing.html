@@ -19,8 +19,8 @@
             </div>
             <p class="pack-who">{{ order.customer_name }}{% if order.area_name %} <span class="row-sub">{{ order.area_name }}</span>{% endif %}</p>
             <ul class="pack-lines">
-              {% for line in order.lines[:4] %}<li>{{ line.quantity }} x {{ line.product_name }} <span class="muted">{{ line.unit_name }}</span></li>{% endfor %}
-              {% if order.lines|length > 4 %}<li class="muted">and {{ order.lines|length - 4 }} more</li>{% endif %}
+              {% for line in order.lines[:3] %}<li>{{ line.quantity }} x {{ line.product_name }} <span class="muted">{{ line.unit_name }}</span></li>{% endfor %}
+              {% if order.lines|length > 3 %}<li><a href="{{ url_for('staff_orders.detail', ref=order.ref) }}">and {{ order.lines|length - 3 }} more</a></li>{% endif %}
             </ul>
             <p class="pack-money"><strong>{{ order.total|peso }}</strong> · {{ 'Paid online' if order.status == 'paid' or order.paid_payment else PAYMENT_METHODS[order.payment_method] }}</p>
             {{ next_step(order, riders, url_for('fulfil.board')) }}

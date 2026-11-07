@@ -50,7 +50,7 @@ Soy sauce 1 L,,,Condiments,Case of 12,12,560,530,
             <tr>
               <th scope="row">{{ item.name }}<span class="row-sub">{{ 'Already in the store: prices updated' if item.existing else 'New' }}</span></th>
               <td>{{ item.category or 'No category' }}</td>
-              <td><ul class="unit-list">{% for unit in item.units %}<li>{{ unit.name }} <strong>{{ unit.retail_price|peso }}</strong></li>{% endfor %}</ul></td>
+              <td><ul class="unit-list">{% for unit in item.units %}<li><span>{{ unit.name }}</span> <strong>{{ unit.retail_price|peso }}</strong></li>{% endfor %}</ul></td>
               <td class="num">{{ 'kept' if item.existing else '{:,}'.format(item.stock) }}</td>
             </tr>
           {% endfor %}

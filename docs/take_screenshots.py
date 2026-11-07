@@ -173,7 +173,7 @@ def shoot_counter(page):
     save(page, "receipt.png")
     # Void only some items: 2 of the 4 candles. The form asks "are you sure?" first (app.js).
     page.once("dialog", lambda dialog: dialog.accept())
-    page.locator(".void-lines tr", has_text="Candles").locator("input.void-count").fill("2")
+    page.locator(".void-lines tr", has_text="Candles").locator(".void-count").select_option("2")
     page.locator('.void-form input[name="reason"]').fill("Two candles were broken")
     page.get_by_role("button", name="Void chosen items").click()
     page.wait_for_load_state()

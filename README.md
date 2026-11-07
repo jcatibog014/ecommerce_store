@@ -103,6 +103,7 @@ This project practises **transactions**, **payments** and **order state**:
 | Cashier: price an order (dark mode) | ![Pricing in dark mode](docs/screenshots/price-order-dark.png) |
 | Cashier: waiting for payment | ![Orders waiting for payment](docs/screenshots/orders-waiting.png) |
 | Cashier: a paid order | ![Payments and Cancel and Refund](docs/screenshots/staff-paid-order.png) |
+| Cashier: a payment that was turned down | ![A payment marked Not paid, with what it means](docs/screenshots/staff-failed-payment.png) |
 | Cashier: a refunded order | ![A refunded order](docs/screenshots/staff-refunded-order.png) |
 | Cashier: the packing board | ![To Pack, Packing, Ready, Out for Delivery](docs/screenshots/packing.png) |
 | Cashier: the packing board (dark mode) | ![The packing board in dark mode](docs/screenshots/packing-dark.png) |

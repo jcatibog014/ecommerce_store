@@ -82,8 +82,16 @@ PAYMENT_FAILED = "failed"
 PAYMENT_EXPIRED = "expired"
 PAYMENT_REFUNDED = "refunded"
 PAYMENT_STATUSES = (PAYMENT_PENDING, PAYMENT_PAID, PAYMENT_FAILED, PAYMENT_EXPIRED, PAYMENT_REFUNDED)
-PAYMENT_STATUS_LABELS = {PAYMENT_PENDING: "Started", PAYMENT_PAID: "Paid", PAYMENT_FAILED: "Didn't go through",
+PAYMENT_STATUS_LABELS = {PAYMENT_PENDING: "Not finished", PAYMENT_PAID: "Paid", PAYMENT_FAILED: "Not paid",
                          PAYMENT_EXPIRED: "Expired", PAYMENT_REFUNDED: "Refunded"}
+# What a status means, under the payment on the staff order page. The gateway doesn't tell us why a
+# payment failed, so these say what can cause it, and that no money was taken.
+PAYMENT_STATUS_NOTES = {
+    PAYMENT_PENDING: "The shopper opened the payment page but hasn't finished paying yet.",
+    PAYMENT_FAILED: "GCash, Maya or the card turned it down (like not enough balance), or the shopper cancelled. "
+                    "No money was taken. They can try again or pay in cash.",
+    PAYMENT_EXPIRED: "The shopper didn't finish paying in time. No money was taken.",
+}
 GATEWAY_PAYMONGO = "paymongo"
 GATEWAY_SANDBOX = "sandbox"  # the built-in practice gateway (demo, tests, your own computer)
 GATEWAY_CASH = "cash"

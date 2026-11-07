@@ -828,6 +828,9 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .payment-expired, .payment-refunded { background: var(--surface-soft); color: var(--ink-soft); border: 1px solid var(--rule-strong); }
 .payment-list li { display: flex; justify-content: space-between; align-items: center; gap: .5rem 1rem; padding: .45rem 0; border-bottom: 1px solid var(--rule); }
 .payment-list li:last-child { border-bottom: 0; }
+/* What a status means, right under its payment (one row with it). */
+.payment-list li:has(+ .payment-note) { border-bottom: 0; padding-bottom: .1rem; }
+.payment-list li.payment-note { display: block; padding-top: .4rem; }
 .sandbox { display: flex; justify-content: center; padding: 1rem 0 2rem; }
 .sandbox-card { width: 100%; max-width: 28rem; border-top: 6px solid var(--tile-4-ink); }
 .sandbox-methods { margin: 0; padding: 0; border: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }

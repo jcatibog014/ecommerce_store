@@ -78,7 +78,8 @@ def create_app(test_config=None):
 
     from . import auth, db, formatting, permissions
     from .models import (
-        CATEGORY_ICONS, FULFILMENTS, MOVE_REASONS, PAYMENT_METHODS, PAYMENT_STATUS_LABELS, PRICE_TYPES, ROLE_LABELS,
+        CATEGORY_ICONS, FULFILMENTS, MOVE_REASONS, PAYMENT_METHODS, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_NOTES,
+        PRICE_TYPES, ROLE_LABELS,
     )
     from . import notices
     from .views import (
@@ -102,7 +103,8 @@ def create_app(test_config=None):
 
     app.jinja_env.globals.update(APP_NAME="DFJC Store", ROLE_LABELS=ROLE_LABELS, CATEGORY_ICONS=CATEGORY_ICONS,
                                  FULFILMENTS=FULFILMENTS, PAYMENT_METHODS=PAYMENT_METHODS, PRICE_TYPES=PRICE_TYPES,
-                                 PAYMENT_STATUS_LABELS=PAYMENT_STATUS_LABELS, MOVE_REASONS=MOVE_REASONS)
+                                 PAYMENT_STATUS_LABELS=PAYMENT_STATUS_LABELS,
+                                 PAYMENT_STATUS_NOTES=PAYMENT_STATUS_NOTES, MOVE_REASONS=MOVE_REASONS)
 
     @app.get("/healthz")
     def healthz():

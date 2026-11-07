@@ -103,9 +103,10 @@
             {% for payment in order.payments|reverse %}
               <li>
                 <span><strong>{{ payment.amount|peso }}</strong> {{ 'online' if payment.gateway != 'cash' else 'cash' }}{% if payment.paid_with %} ({{ PAID_WITH_LABELS.get(payment.paid_with, payment.paid_with) }}){% endif %}
-                  <span class="row-sub">{{ payment.created_at|nice_datetime }}{% if payment.gateway == 'sandbox' %} · practice payment{% endif %}{% if payment.gateway_payment_id %} · {{ payment.gateway_payment_id }}{% endif %}</span></span>
+                  <span class="row-sub">{{ payment.created_at|nice_datetime }}{% if payment.gateway == 'sandbox' %} · practice payment, no real money{% endif %}{% if payment.gateway_payment_id %} · {{ payment.gateway_payment_id }}{% endif %}</span></span>
                 <span class="pill payment-{{ payment.status }}">{{ PAYMENT_STATUS_LABELS[payment.status] }}</span>
               </li>
+              {% if payment.status in PAYMENT_STATUS_NOTES %}<li class="row-sub payment-note">{{ PAYMENT_STATUS_NOTES[payment.status] }}</li>{% endif %}
               {% if payment.needs_refund %}<li class="warn-text">This payment came in after the order changed. Give it back below.</li>{% endif %}
               {% for refund in payment.refunds %}
                 <li class="row-sub">Refund of {{ refund.amount|peso }}: {{ refund.status }}{% if refund.error %} ({{ refund.error }}){% endif %}</li>

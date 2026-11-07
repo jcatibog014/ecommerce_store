@@ -58,8 +58,9 @@
       {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
       <details class="user-menu" data-user-menu>
         <summary>
-          <span class="avatar" aria-hidden="true">{{ g.user.name[:1]|upper }}</span>
-          <span class="user-menu-name"><span class="visually-hidden">Account menu for </span>{{ g.user.first_name }}
+          {% set me = acting_user() %}
+          <span class="avatar" aria-hidden="true">{{ me.name[:1]|upper }}</span>
+          <span class="user-menu-name"><span class="visually-hidden">Account menu for </span>{{ me.first_name }}
             <span class="user-menu-role">{{ ROLE_LABELS[g.role] }}</span></span>
         </summary>
         <div class="user-menu-items">

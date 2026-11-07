@@ -2,6 +2,7 @@
 import re
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
 
 from dfjc import db, invites
@@ -150,3 +151,17 @@ def test_settings_change_details_and_password(app, shopper, shopper_id):
 def test_settings_has_the_theme_and_log_out(shopper):
     page = shopper.get("/settings/").get_data(as_text=True)
     assert "data-theme-settings" in page and 'action="/logout"' in page
+
+
+@pytest.mark.parametrize("role, words, not_words", [
+    ("shopper", "about your orders", "deliveries"),
+    ("rider", "when you bring their order", "about your orders"),
+    ("cashier", "the orders you price", "about your orders"),
+    ("owner", "the orders you price", "about your orders"),
+])
+def test_your_details_says_what_each_role_uses_them_for(app, client, store_id, role, words, not_words):
+    """A rider or cashier doesn't order, so Settings never tells them about "your orders"."""
+    from .conftest import make_user
+    log_in_as(client, make_user(app, store_id, f"{role}2@example.com", role=role))
+    page = client.get("/settings/").get_data(as_text=True)
+    assert words in page and not_words not in page

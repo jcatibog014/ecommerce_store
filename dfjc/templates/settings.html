@@ -4,6 +4,7 @@
 {% block content %}
   {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
   {% set locked = 'disabled' if g.user.is_demo else '' %}
+  {% set me = acting_user() %}{# in the demo's rider view: the store's rider #}
   <div class="settings">
     <div class="page-head"><h1>Settings</h1></div>
 
@@ -24,14 +25,23 @@
     <section class="setting">
       <div class="setting-text">
         <h2>Your Details</h2>
-        <p>The store calls this number about your orders. Your email is {{ g.user.email }}.</p>
+        {# Each role reads what its name and number are for. #}
+        {% if g.role == 'rider' %}
+          <p>Shoppers see your first name when you bring their order. The store calls this number about deliveries. You log in with {{ me.email }}.</p>
+        {% elif g.role == 'cashier' %}
+          <p>Your first name shows on the orders you price and the receipts you print. The owner calls this number about work. You log in with {{ me.email }}.</p>
+        {% elif g.role == 'owner' %}
+          <p>Your first name shows on the orders you price and the receipts you print. You log in with {{ me.email }}.</p>
+        {% else %}
+          <p>The store calls this number about your orders. Your email is {{ me.email }}.</p>
+        {% endif %}
       </div>
       <form method="post" data-watch-changes>
         {{ csrf() }}
         <input type="hidden" name="action" value="details">
         <fieldset class="stack plain-fieldset" {{ locked }}>
-          {{ field('name', 'Name', g.user.name, errors.name, attrs='autocomplete="name" required maxlength="80"') }}
-          {{ field('mobile', 'Mobile number', g.user.mobile, errors.mobile, type='tel', attrs='autocomplete="tel" required') }}
+          {{ field('name', 'Name', me.name, errors.name, attrs='autocomplete="name" required maxlength="80"') }}
+          {{ field('mobile', 'Mobile number', me.mobile, errors.mobile, type='tel', attrs='autocomplete="tel" required') }}
           <div class="form-actions"><button class="button" type="submit">Save details</button></div>
         </fieldset>
       </form>
@@ -64,13 +74,13 @@
       <section class="setting">
         <div class="setting-text">
           <h2>Order Emails</h2>
-          <p>An email when your order is priced, paid, ready or on the way. They go to {{ g.user.email }}.</p>
+          <p>An email when your order is priced, paid, ready or on the way. They go to {{ me.email }}.</p>
         </div>
         <form method="post" data-watch-changes>
           {{ csrf() }}
           <input type="hidden" name="action" value="emails">
           <fieldset class="stack plain-fieldset" {{ locked }}>
-            <label class="check"><input type="checkbox" name="order_emails" value="1"{% if g.user.order_emails %} checked{% endif %}> Email me about my orders</label>
+            <label class="check"><input type="checkbox" name="order_emails" value="1"{% if me.order_emails %} checked{% endif %}> Email me about my orders</label>
             <div class="form-actions"><button class="button" type="submit">Save</button></div>
           </fieldset>
         </form>
@@ -126,7 +136,7 @@
     <section class="setting">
       <div class="setting-text">
         <h2>Log Out</h2>
-        <p>Logged in as {{ g.user.name }}{% if g.role != 'shopper' %} ({{ ROLE_LABELS[g.role]|lower }}){% endif %}.</p>
+        <p>Logged in as {{ me.name }}{% if g.role != 'shopper' %} ({{ ROLE_LABELS[g.role]|lower }}){% endif %}.</p>
       </div>
       <form method="post" action="{{ url_for('auth.logout') }}" class="form-actions setting-account-actions">
         {{ csrf() }}

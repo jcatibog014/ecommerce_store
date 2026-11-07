@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from .. import db, forms, fulfil, orders
+from ..auth import acting_user
 from ..dates import day_start_utc, local_today, utcnow
 from ..models import (
     CONFIRMED, DELIVERED, OUT_FOR_DELIVERY, PACKING, PAID, PICKED_UP, READY, RIDER, Order, User,
@@ -38,13 +39,8 @@ def riders(s):
 
 
 def acting_rider(s):
-    """Who "my" deliveries belong to. In the demo the visitor plays the rider through View As,
-    so they act as the demo store's rider (Jun); everywhere else it is the person logged in."""
-    if g.user.is_demo and g.role == RIDER:
-        rider = s.scalar(select(User).where(User.store_id == g.store.id, User.role == RIDER).order_by(User.id))
-        if rider is not None:
-            return rider
-    return g.user
+    """Who "my" deliveries belong to: the rider logged in, or in the demo the store's rider."""
+    return acting_user()
 
 
 def back_to(default):

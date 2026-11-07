@@ -1,4 +1,5 @@
-"""The owner's pages for people and the store: staff, invite links, store details, delivery areas.
+"""The owner's pages for people and the store: staff, invite links, delivery areas.
+(The store's details are a section of Settings.)
 Also the page an invite link opens (/join/<token>), where a cashier or rider makes their login."""
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy import select
@@ -71,27 +72,11 @@ def set_active(user_id):
     return redirect(url_for("staff.index"))
 
 
-@bp.route("/manage/store", methods=["GET", "POST"])
+@bp.get("/manage/store")
 @needs(MANAGE_STORE, "Only the owner can change the store's details.")
 def store():
-    s = db.session()
-    errors = {}
-    values = None
-    if request.method == "POST":
-        values, errors = {}, {}
-        for name, limit, label in (("name", 80, "The store's name"), ("tagline", 160, ""), ("address", 300, ""),
-                                   ("phone", 40, ""), ("hours", 300, ""), ("pickup_note", 500, "")):
-            values[name], errors[name] = forms.text(request.form, name, limit, required=bool(label), label=label)
-        errors = {key: value for key, value in errors.items() if value}
-        if not errors:
-            current = s.get(Store, g.store.id)
-            for name, value in values.items():
-                setattr(current, name, value)
-            s.commit()
-            flash("The store's details are saved. Shoppers see them on the home page.")
-            return redirect(url_for("staff.store"))
-    return render_template("manage/store.html", values=values or store_values(g.store), errors=errors), \
-        400 if errors else 200
+    """The old Store Details page: its form is in Settings now."""
+    return redirect(url_for("settings.index", _anchor="store"))
 
 
 def read_area(form):
@@ -147,8 +132,6 @@ def save_area(area_id):
     return redirect(url_for("staff.areas"))
 
 
-def store_values(current):
-    return {name: getattr(current, name) for name in ("name", "tagline", "address", "phone", "hours", "pickup_note")}
 
 
 @bp.route("/join/<token>", methods=["GET", "POST"])

@@ -1,13 +1,16 @@
 """Settings: every preference and account action lives here, never in the menu.
+The owner also keeps the store's details here (name, address, hours...).
 
 Each form sends an "action" field, and each action is one small function.
 The demo sees every form, switched off; the server refuses its changes anyway.
 """
-from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from .. import auth, db
+from .. import auth, db, forms
 from ..auth import login_required
+from ..models import Store
+from ..permissions import MANAGE_STORE, can
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -57,16 +60,51 @@ def change_emails(errors):
 
 ACTIONS = {"details": change_details, "password": change_password, "emails": change_emails}
 
+# The store's details: (form field, Store column, longest, required label). "store_name", not
+# "name", so its error never lands on the person's own Name field.
+STORE_FIELDS = (("store_name", "name", 80, "The store's name"), ("tagline", "tagline", 160, ""),
+                ("address", "address", 300, ""), ("phone", "phone", 40, ""), ("hours", "hours", 300, ""),
+                ("pickup_note", "pickup_note", 500, ""))
+
+
+def store_values(store):
+    return {field: getattr(store, column) for field, column, _, _ in STORE_FIELDS}
+
+
+def change_store(errors, values):
+    """The owner's store details. A demo store is the visitor's own, so the demo may change it."""
+    if not can(MANAGE_STORE):
+        abort(403, "Only the owner can change the store's details.")
+    for field, _, limit, label in STORE_FIELDS:
+        values[field], problem = forms.text(request.form, field, limit, required=bool(label), label=label)
+        if problem:
+            errors[field] = problem
+    if errors:
+        return None
+    current = db.session().get(Store, g.store.id)
+    for field, column, _, _ in STORE_FIELDS:
+        setattr(current, column, values[field])
+    db.session().commit()
+    flash("The store's details are saved. Shoppers see them on the home page.")
+    return redirect(url_for("settings.index", _anchor="store"))
+
 
 @bp.route("/", methods=["GET", "POST"])
 @login_required
 def index():
     errors = {}
+    store = store_values(g.store) if can(MANAGE_STORE) else None
     if request.method == "POST":
-        auth.not_for_demo("The demo can't change its account. Everything else is yours to try.")
-        action = ACTIONS.get(request.form.get("action"))
-        if action:
-            response = action(errors)
+        if request.form.get("action") == "store":
+            store = {}
+            response = change_store(errors, store)
             if response:
                 return response
-    return render_template("settings.html", errors=errors), 400 if errors else 200
+        else:
+            auth.not_for_demo("The demo can't change its account. Everything else is yours to try.")
+            action = ACTIONS.get(request.form.get("action"))
+            if action:
+                response = action(errors)
+                if response:
+                    return response
+    return render_template("settings.html", errors=errors, store=store), 400 if errors else 200

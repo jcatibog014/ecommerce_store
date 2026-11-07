@@ -105,21 +105,19 @@ def step(ref):
 @bp.get("/deliveries")
 @needs(SEE_DELIVERIES)
 def deliveries():
+    """The rider's own deliveries and the cash with them."""
+    if g.role != RIDER:  # the cashier and owner see what is out in Packing's last column
+        return redirect(url_for("fulfil.board"))
     s = db.session()
-    query = select(Order).where(Order.store_id == g.store.id, Order.status == OUT_FOR_DELIVERY)
-    mine = g.role == RIDER
     me = acting_rider(s)
-    if mine:
-        query = query.where(Order.rider_id == me.id)
-    found = s.scalars(query.order_by(Order.updated_at).options(selectinload(Order.lines),
-                                                               selectinload(Order.rider))).all()
-    done = select(Order).where(Order.store_id == g.store.id, Order.status == DELIVERED,
-                               Order.updated_at >= day_start_utc(local_today()))
-    if mine:
-        done = done.where(Order.rider_id == me.id)
-    delivered_today = s.scalars(done.order_by(Order.updated_at.desc())).all()
-    held = fulfil.cash_with(s, me) if mine else []
-    return render_template("deliveries.html", orders_found=found, delivered_today=delivered_today, mine=mine,
+    found = s.scalars(select(Order).where(Order.store_id == g.store.id, Order.status == OUT_FOR_DELIVERY,
+                                          Order.rider_id == me.id)
+                      .order_by(Order.updated_at).options(selectinload(Order.lines))).all()
+    delivered_today = s.scalars(select(Order).where(
+        Order.store_id == g.store.id, Order.status == DELIVERED, Order.rider_id == me.id,
+        Order.updated_at >= day_start_utc(local_today())).order_by(Order.updated_at.desc())).all()
+    held = fulfil.cash_with(s, me)
+    return render_template("deliveries.html", orders_found=found, delivered_today=delivered_today,
                            cash_held=sum(payment.amount for payment in held), cash_count=len(held))
 
 

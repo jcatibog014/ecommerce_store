@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from .. import db, forms, gateways, orders, payments
 from ..dates import utcnow
 from ..models import (
-    AWAITING_PAYMENT, CANCELLED, CONFIRMED, DELIVERED, PAID, PICKED_UP, PLACED, REFUNDED, RIDER, WHOLESALE, Order, User,
+    AWAITING_PAYMENT, CANCELLED, DELIVERED, PICKED_UP, PLACED, REFUNDED, RIDER, WHOLESALE, Order, User,
 )
 from ..permissions import PRICE_ORDERS, SEE_ORDERS, can, needs
 
@@ -20,7 +20,6 @@ bp = Blueprint("staff_orders", __name__, url_prefix="/manage/orders")
 TABS = {
     "to-price": ("To Price", (PLACED,), True),
     "waiting": ("Waiting for Payment", (AWAITING_PAYMENT,), True),
-    "confirmed": ("Confirmed", (CONFIRMED, PAID), True),
     "done": ("Done", (PICKED_UP, DELIVERED), False),
     "cancelled": ("Cancelled", (CANCELLED, REFUNDED), False),
     "all": ("All Orders", None, False),

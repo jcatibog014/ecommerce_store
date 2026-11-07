@@ -1,17 +1,15 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, empty %}
-{% block title %}{{ 'My Deliveries' if mine else 'Deliveries' }} - {{ APP_NAME }}{% endblock %}
+{% block title %}My Deliveries - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <div class="page-head">
-    <h1>{{ 'My Deliveries' if mine else 'Deliveries' }}</h1>
-    <p class="page-sub">{{ 'Orders with you now. Press Delivered when the shopper has them.' if mine else 'Every order out with a rider.' }}</p>
+    <h1>My Deliveries</h1>
+    <p class="page-sub">Orders with you now. Press Delivered when the shopper has them.</p>
   </div>
-  {% if mine %}
-    <div class="callout{% if cash_held %} callout-pay{% endif %} rider-cash">
-      <h2>Cash with You: {{ cash_held|peso }}</h2>
-      <p>{% if cash_held %}From {{ cash_count }} {{ 'delivery' if cash_count == 1 else 'deliveries' }}. Hand it to the cashier when you are back at the store.{% else %}Nothing to hand over right now.{% endif %}</p>
-    </div>
-  {% endif %}
+  <div class="callout{% if cash_held %} callout-pay{% endif %} rider-cash">
+    <h2>Cash with You: {{ cash_held|peso }}</h2>
+    <p>{% if cash_held %}From {{ cash_count }} {{ 'delivery' if cash_count == 1 else 'deliveries' }}. Hand it to the cashier when you are back at the store.{% else %}Nothing to hand over right now.{% endif %}</p>
+  </div>
   {% if orders_found %}
     <div class="delivery-list">
       {% for order in orders_found %}
@@ -24,7 +22,7 @@
           <p class="delivery-address">{{ order.address }}</p>
           {% if order.customer_mobile %}<p><a class="button button-small button-quiet" href="tel:{{ order.customer_mobile }}">Call {{ order.customer_mobile|mobile }}</a></p>{% endif %}
           {% if order.note %}<p class="shopper-note"><strong>Note:</strong> {{ order.note }}</p>{% endif %}
-          <p class="row-sub">{{ order.ref }} · {{ order.item_count }} items{% if not mine and order.rider %} · with {{ order.rider.first_name }}{% endif %}</p>
+          <p class="row-sub">{{ order.ref }} · {{ order.item_count }} items</p>
           <div class="delivery-actions">
             <form method="post" action="{{ url_for('fulfil.deliver', ref=order.ref, outcome='delivered') }}"
                   {% if cod %}data-confirm="Did you collect {{ order.total|peso }} from {{ order.customer_name }}?"{% endif %}>
@@ -45,7 +43,7 @@
       {% endfor %}
     </div>
   {% else %}
-    {{ empty('No Deliveries Right Now', 'Orders the cashier sends out with you show up here.' if mine else 'Orders out with a rider show up here.') }}
+    {{ empty('No Deliveries Right Now', 'Orders the cashier sends out with you show up here.') }}
   {% endif %}
   {% if delivered_today %}
     <h2>Delivered Today</h2>

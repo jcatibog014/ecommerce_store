@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf, field %}
+{% from "_macros.html" import csrf, field, textarea %}
 {% block title %}Settings - {{ APP_NAME }}{% endblock %}
 {% block content %}
   {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
@@ -36,6 +36,29 @@
         </fieldset>
       </form>
     </section>
+
+    {% if store is not none %}
+      {# The owner's store details. The demo store is the visitor's own, so this one stays switched on. #}
+      <section class="setting" id="store">
+        <div class="setting-text">
+          <h2>Store Details</h2>
+          <p>Shoppers see these on the home page and at the bottom of every page.</p>
+        </div>
+        <form method="post" class="stack" data-watch-changes>
+          {{ csrf() }}
+          <input type="hidden" name="action" value="store">
+          {{ field('store_name', "Store's name", store.store_name, errors.store_name, attrs='required maxlength="80"') }}
+          {{ field('tagline', 'One line about the store', store.tagline, errors.tagline, attrs='maxlength="160"') }}
+          {{ textarea('address', 'Address', store.address, errors.address, rows=2, attrs='maxlength="300"') }}
+          <div class="form-grid">
+            {{ field('phone', 'Phone', store.phone, errors.phone, type='tel', attrs='maxlength="40"') }}
+            {{ field('hours', 'Opening hours', store.hours, errors.hours, attrs='maxlength="300" placeholder="Every day, 6:00 AM to 9:00 PM"') }}
+          </div>
+          {{ textarea('pickup_note', 'For pickup orders', store.pickup_note, errors.pickup_note, hint='Where and how to pick up', rows=2, attrs='maxlength="500"') }}
+          <div class="form-actions"><button class="button" type="submit">Save store details</button></div>
+        </form>
+      </section>
+    {% endif %}
 
     {% if g.role == 'shopper' %}
       <section class="setting">

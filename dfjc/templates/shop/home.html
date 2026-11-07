@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% from "_icons.html" import category_icon %}
 {% from "shop/_card.html" import product_card %}
+{# The sign shows the store's hours, address and phone, so the home page needs no footer. #}
+{% block footer %}{% endblock %}
 {% block content %}
   <section class="store-sign">
     <div class="store-sign-text">
@@ -9,6 +11,7 @@
       <ul class="store-facts">
         {% if g.store.hours %}<li><span class="fact-label">Open</span> {{ g.store.hours }}</li>{% endif %}
         {% if g.store.address %}<li><span class="fact-label">Find us</span> {{ g.store.address }}</li>{% endif %}
+        {% if g.store.phone %}<li><span class="fact-label">Call</span> {{ g.store.phone }}</li>{% endif %}
         <li><span class="fact-label">Get it</span> Pick up at the store, or we deliver</li>
       </ul>
       <div class="actions">
@@ -73,6 +76,5 @@
       <h2>Buying for Your Own Store?</h2>
       <p>Order by the box, the case or the sack. Before you pay, our cashier checks your order and gives the wholesale price where it applies.</p>
     </div>
-    <a class="button button-quiet" href="{{ url_for('shop.products', sort='name') }}">Browse the catalog</a>
   </section>
 {% endblock %}

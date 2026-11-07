@@ -64,6 +64,7 @@ PAGES = [
     ("order-pay.png", "shopper", "{my-order:Waiting for payment}", "light", DESKTOP),
     ("order-paid.png", "shopper", "{my-order:Paid}", "light", DESKTOP),
     ("staff-paid-order.png", "cashier", "{staff-order:all:Paid}", "light", DESKTOP),
+    ("staff-failed-payment.png", "cashier", "{staff-order:waiting:Waiting}", "light", DESKTOP),
     ("staff-refunded-order.png", "cashier", "{staff-order:cancelled:Refunded}", "light", DESKTOP),
     ("orders-waiting.png", "cashier", "/manage/orders?tab=waiting", "light", DESKTOP),
     ("packing.png", "cashier", "/manage/packing", "light", DESKTOP),

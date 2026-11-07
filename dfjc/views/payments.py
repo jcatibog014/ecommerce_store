@@ -207,7 +207,8 @@ def sandbox(session_id):
         except (IntegrityError, orders.OrderChanged):
             s.rollback()
         if action == "fail":
-            flash("The payment didn't go through (a practice failure). Try again, or pay in cash.", "error")
+            flash("The payment was turned down. This was a practice failure, so no real money was involved. "
+                  "Try again, or pay in cash.", "error")
             return redirect(url_for("my_orders.detail", ref=order.ref))
         return redirect(url_for("payments.returned", ref=order.ref, payment_id=payment.id))
     store = s.get(Store, order.store_id)

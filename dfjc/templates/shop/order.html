@@ -26,7 +26,7 @@
       <p>{% if order.price_type == 'wholesale' %}You got the wholesale price on every item. {% elif order.price_type == 'mixed' %}You got the wholesale price on some items. {% endif %}
         Pay with GCash, Maya or a card on PayMongo's secure page. We start packing when the payment is in.</p>
       {% if order.cashier_note %}<p class="cashier-note"><strong>From the cashier:</strong> {{ order.cashier_note }}</p>{% endif %}
-      {% if latest and latest.status == 'failed' %}<p class="field-error">Your last payment didn't go through. You can try again.</p>{% endif %}
+      {% if latest and latest.status == 'failed' %}<p class="field-error">Your last payment wasn't completed: it was turned down or cancelled, and no money was taken. You can try again, or pay in cash.</p>{% endif %}
       {% if pending %}<p class="card-note">You started a payment {{ pending.created_at|nice_time }}. Finish it on the payment page, or check whether it came in.</p>{% endif %}
       <div class="actions">
         <form method="post" action="{{ url_for('payments.pay', ref=order.ref) }}">

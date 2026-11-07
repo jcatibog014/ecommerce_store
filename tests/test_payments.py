@@ -130,7 +130,8 @@ def test_the_return_page_twice_pays_once(app, shopper, waiting):
 def test_a_failed_payment_can_be_tried_again(app, shopper, waiting):
     sandbox = press_pay(shopper, waiting).location
     response = post(shopper, sandbox, {"action": "fail"}, follow_redirects=True)
-    assert "didn&#39;t go through" in response.get_data(as_text=True)
+    assert "practice failure" in response.get_data(as_text=True)
+    assert "no money was taken" in shopper.get(f"/orders/{waiting.ref}").get_data(as_text=True)
     assert payment_now(app).status == "failed" and order_now(app).status == AWAITING_PAYMENT
     again = press_pay(shopper, waiting).location
     assert again != sandbox and count(app, Payment) == 2
@@ -449,3 +450,18 @@ def test_the_demo_shows_every_kind_of_payment(app):
     cancelled = demo.get("/manage/orders?tab=cancelled").get_data(as_text=True)
     assert "Refunded" in cancelled and "Ramon Garcia" in cancelled
     assert "Paid online" in demo.get("/manage/packing").get_data(as_text=True)
+
+
+def test_a_failed_payment_says_what_it_means(app):
+    """The demo's waiting order failed once on purpose: the cashier reads what that means."""
+    import re
+    demo = app.test_client()
+    with demo.session_transaction() as session:
+        session["csrf"] = "x"
+    post(demo, "/demo")
+    post(demo, "/demo/view-as", {"role": "cashier"})
+    queue = demo.get("/manage/orders?tab=waiting").get_data(as_text=True)
+    ref = re.search(r'/manage/orders/(DF-[A-Z0-9]+)"', queue).group(1)
+    page = demo.get(f"/manage/orders/{ref}").get_data(as_text=True)
+    assert ">Not paid<" in page and "No money was taken" in page and "practice payment, no real money" in page
+    assert "go through" not in page

@@ -47,7 +47,7 @@ def counter_sales(s, store, start, end):
 
 def totals(orders, sales):
     online = sum(order.total for order in orders)
-    counter = sum(sale.total for sale in sales)
+    counter = sum(sale.kept_total for sale in sales)
     count = len(orders) + len(sales)
     return {"online": online, "counter": counter, "total": online + counter, "count": count,
             "average": round((online + counter) / count) if count else 0}
@@ -80,7 +80,7 @@ def per_day(orders, sales, first, days):
     for sale in sales:
         day = to_local(sale.created_at).date()
         if day in rows:
-            rows[day]["counter"] += sale.total
+            rows[day]["counter"] += sale.kept_total
     return [{"day": day, **values, "total": values["online"] + values["counter"]} for day, values in rows.items()]
 
 
@@ -128,8 +128,9 @@ def best_sellers(s, store, orders, sales, limit=10):
     sale_ids = [sale.id for sale in sales]
     if sale_ids:
         for line in s.scalars(select(WalkinLine).where(WalkinLine.sale_id.in_(sale_ids))):
-            pieces[line.product_name] += line.pieces
-            amount[line.product_name] += line.line_total
+            if line.kept_quantity:  # voided items weren't sold
+                pieces[line.product_name] += line.kept_pieces
+                amount[line.product_name] += line.kept_total
     ranked = sorted(amount, key=lambda name: (-amount[name], name))[:limit]
     return [(name, pieces[name], amount[name]) for name in ranked]
 
@@ -144,7 +145,7 @@ def price_types(s, orders, sales):
     sale_ids = [sale.id for sale in sales]
     if sale_ids:
         for line in s.scalars(select(WalkinLine).where(WalkinLine.sale_id.in_(sale_ids))):
-            found[line.price_type] += line.line_total
+            found[line.price_type] += line.kept_total
     return found
 
 
@@ -155,7 +156,7 @@ def payment_split(orders, sales):
         label = ("Cash at pickup" if order.payment_method == CASH_PICKUP else
                  "Cash on delivery" if order.payment_method == COD else "Online (GCash, Maya, card)")
         split[label] += order.total
-    split["Counter (cash)"] = sum(sale.total for sale in sales)
+    split["Counter (cash)"] = sum(sale.kept_total for sale in sales)
     return sorted(split.items(), key=lambda item: -item[1])
 
 

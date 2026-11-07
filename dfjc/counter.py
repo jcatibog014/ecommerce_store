@@ -15,6 +15,10 @@ A shift: open with the starting cash, close with the count. Expected cash =
 starting cash + counter sales + pickup cash this cashier took + rider cash
 this cashier received, all during the shift. At most one shift per cashier
 is open (a partial UNIQUE index), even if Open is pressed twice at once.
+
+Voiding is per item: the cashier chooses which items (and how many of each) to take off a
+sale. Each line's voided_quantity only grows with a guarded UPDATE (never past its quantity),
+so pressing Void twice can't give back the same item twice. The rest of the sale stays.
 """
 import secrets
 
@@ -23,7 +27,7 @@ from sqlalchemy import func, select, update
 from . import catalog
 from .models import (
     MIXED, MOVE_WALKIN, RETAIL, WHOLESALE, CashShift, Payment, Product, ProductUnit, Remittance, StockMove,
-    WalkinLine, WalkinSale,
+    WalkinLine, WalkinSale, WalkinVoid,
 )
 
 MAX_QUANTITY = 999
@@ -56,7 +60,7 @@ def current_shift(s, store, cashier):
 def summary(s, shift, moment):
     """The money this shift should have in the drawer."""
     until = shift.closed_at or moment
-    sales = s.scalar(select(func.coalesce(func.sum(WalkinSale.total), 0)).where(
+    sales = s.scalar(select(func.coalesce(func.sum(WalkinSale.total - WalkinSale.voided_amount), 0)).where(
         WalkinSale.shift_id == shift.id, WalkinSale.voided_at.is_(None))) or 0
     sale_count = s.scalar(select(func.count()).select_from(WalkinSale).where(
         WalkinSale.shift_id == shift.id, WalkinSale.voided_at.is_(None)))
@@ -179,26 +183,54 @@ def sell(s, store, shift, cashier, ticket, cash_given, key, moment):
     return sale, True
 
 
-def void(s, sale, by, moment, reason):
-    """Undo a sale from the open shift: the stock goes back and it no longer counts. Once only."""
+def void(s, sale, by, moment, reason, quantities):
+    """Take items off a sale from the open shift. quantities is {line id: how many to void}.
+    Those items go back in stock and stop counting; the rest of the sale stays. Returns the
+    WalkinVoid (its amount is the cash to give back). The caller commits, or rolls back on error."""
     if sale.shift.closed_at is not None:
         raise CounterProblem("This sale's shift is closed, so it can't be voided.")
-    voided = s.execute(update(WalkinSale).where(WalkinSale.id == sale.id, WalkinSale.voided_at.is_(None))
-                       .values(voided_at=moment, void_reason=reason[:200])
-                       .execution_options(synchronize_session=False)).rowcount
-    if voided != 1:
-        raise CounterProblem("This sale was already voided.")
-    for line in sale.lines:
-        if line.product_id is None:
-            continue
-        after = s.execute(update(Product).where(Product.id == line.product_id)
-                          .values(stock_pieces=Product.stock_pieces + line.pieces)
+    lines = {line.id: line for line in sale.lines}
+    chosen = {line_id: count for line_id, count in quantities.items() if line_id in lines and count > 0}
+    if not chosen:
+        raise CounterProblem("Choose the items to void, and how many of each.")
+    amount, items, pieces = 0, [], {}
+    for line_id in sorted(chosen):
+        line, count = lines[line_id], chosen[line_id]
+        # Guarded: never more than the line still has, even if Void is pressed twice at once.
+        changed = s.execute(update(WalkinLine).where(WalkinLine.id == line_id,
+                                                     WalkinLine.voided_quantity + count <= WalkinLine.quantity)
+                            .values(voided_quantity=WalkinLine.voided_quantity + count)
+                            .execution_options(synchronize_session=False)).rowcount
+        if changed != 1:
+            raise CounterProblem(f"Only {line.kept_quantity:,} of {line.product_name} ({line.unit_name}) "
+                                 "is left on this sale to void.")
+        amount += count * line.unit_price
+        items.append(f"{count} x {line.product_name} ({line.unit_name})")
+        if line.product_id is not None:
+            pieces[line.product_id] = pieces.get(line.product_id, 0) + count * line.pieces_per_unit
+    s.execute(update(WalkinSale).where(WalkinSale.id == sale.id)
+              .values(voided_amount=WalkinSale.voided_amount + amount)
+              .execution_options(synchronize_session=False))
+    for product_id in sorted(pieces):
+        after = s.execute(update(Product).where(Product.id == product_id)
+                          .values(stock_pieces=Product.stock_pieces + pieces[product_id])
                           .returning(Product.stock_pieces).execution_options(synchronize_session=False)).scalar()
-        s.add(StockMove(store_id=sale.store_id, product_id=line.product_id, change=line.pieces, stock_after=after,
-                        reason=MOVE_WALKIN, note=f"Voided {sale.receipt_no}: {reason}"[:200], by_id=by.id,
+        s.add(StockMove(store_id=sale.store_id, product_id=product_id, change=pieces[product_id], stock_after=after,
+                        reason=MOVE_WALKIN, note=f"Voided on {sale.receipt_no}: {reason}"[:200], by_id=by.id,
                         created_at=moment))
+    record = WalkinVoid(sale_id=sale.id, items=", ".join(items)[:500], amount=amount, reason=reason[:200],
+                        by_id=by.id, created_at=moment)
+    s.add(record)
+    s.flush()
     s.refresh(sale)
-    return sale
+    for line in sale.lines:
+        s.refresh(line)
+    if all(line.kept_quantity == 0 for line in sale.lines):
+        # Everything is voided: the sale no longer counts at all.
+        s.execute(update(WalkinSale).where(WalkinSale.id == sale.id, WalkinSale.voided_at.is_(None))
+                  .values(voided_at=moment).execution_options(synchronize_session=False))
+        s.refresh(sale)
+    return record
 
 
 def shifts(s, store, cashier=None, limit=50):

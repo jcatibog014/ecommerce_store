@@ -964,6 +964,11 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .receipt-thanks { margin: .75rem 0 0; text-align: center; }
 .receipt-void { margin: .4rem 0; padding: .2rem; text-align: center; border: 2px solid #b00; color: #b00; font-weight: 700; }
 .receipt.is-voided .receipt-lines, .receipt.is-voided .receipt-sums { text-decoration: line-through; }
+/* Voiding item by item: a voided line is crossed out; a part-voided one says how many. */
+.receipt-lines tr.is-voided td { text-decoration: line-through; color: #666; }
+.receipt-voided-line td { color: #b00; }
+.void-lines .void-count { width: 5rem; text-align: right; }
+.void-list li { padding: .35rem 0; }
 @media print {
   body { background: #fff !important; }
   .sidebar, .shop-header, .demo-bar, .no-print, .flashes, .shop-footer { display: none !important; }

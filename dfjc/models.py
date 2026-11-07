@@ -701,6 +701,7 @@ class WalkinSale(Base):
     __tablename__ = "walkin_sales"
     __table_args__ = (
         CheckConstraint("total >= 0 AND cash_given >= total AND change = cash_given - total", name="cash_adds_up"),
+        CheckConstraint("voided_amount >= 0 AND voided_amount <= total", name="voided_in_range"),
         Index("ix_walkin_sales_store_created", "store_id", "created_at"),
     )
 
@@ -714,23 +715,38 @@ class WalkinSale(Base):
     change: Mapped[int]
     # The idempotency key of the ticket: pressing Pay twice records one sale.
     ticket_key: Mapped[str] = mapped_column(String(64), unique=True)
+    # Voiding is per item: the money given back so far. voided_at is set once EVERY item is voided.
+    voided_amount: Mapped[int] = mapped_column(default=0, server_default="0")
     voided_at: Mapped[datetime | None]
-    void_reason: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     shift: Mapped[CashShift] = relationship(back_populates="sales")
     cashier: Mapped[User | None] = relationship()
     lines: Mapped[list["WalkinLine"]] = relationship(back_populates="sale", order_by="WalkinLine.id",
                                                      cascade="all, delete-orphan", passive_deletes=True)
+    voids: Mapped[list["WalkinVoid"]] = relationship(back_populates="sale", order_by="WalkinVoid.id",
+                                                     cascade="all, delete-orphan", passive_deletes=True)
 
     @property
     def receipt_no(self):
         return f"R-{self.id:06d}"
 
+    @property
+    def kept_total(self):
+        """What the sale is worth now: the total less the items voided."""
+        return self.total - self.voided_amount
+
+    @property
+    def can_void(self):
+        return self.voided_at is None and self.shift.closed_at is None
+
 
 class WalkinLine(Base):
     __tablename__ = "walkin_lines"
-    __table_args__ = (CheckConstraint("quantity >= 1", name="quantity_positive"),)
+    __table_args__ = (
+        CheckConstraint("quantity >= 1", name="quantity_positive"),
+        CheckConstraint("voided_quantity >= 0 AND voided_quantity <= quantity", name="voided_in_range"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sale_id: Mapped[int] = mapped_column(ForeignKey("walkin_sales.id", ondelete="CASCADE"), index=True)
@@ -744,8 +760,38 @@ class WalkinLine(Base):
     price_type: Mapped[str] = mapped_column(String(10))
     unit_price: Mapped[int]
     line_total: Mapped[int]
+    voided_quantity: Mapped[int] = mapped_column(default=0, server_default="0")  # of quantity, given back
 
     sale: Mapped[WalkinSale] = relationship(back_populates="lines")
+
+    @property
+    def kept_quantity(self):
+        return self.quantity - self.voided_quantity
+
+    @property
+    def kept_pieces(self):
+        return self.kept_quantity * self.pieces_per_unit
+
+    @property
+    def kept_total(self):
+        return self.kept_quantity * self.unit_price
+
+
+class WalkinVoid(Base):
+    """Items taken off a counter sale: which, how much was given back, why and by whom."""
+    __tablename__ = "walkin_voids"
+    __table_args__ = (CheckConstraint("amount >= 0", name="amount_not_negative"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sale_id: Mapped[int] = mapped_column(ForeignKey("walkin_sales.id", ondelete="CASCADE"), index=True)
+    items: Mapped[str] = mapped_column(String(500))  # "2 x Cola 1.5 L (Bottle)", as they were voided
+    amount: Mapped[int]  # centavos given back
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    sale: Mapped[WalkinSale] = relationship(back_populates="voids")
+    by: Mapped[User | None] = relationship()
 
 
 # ---------- Stage 6: favorites, promos and emails ----------

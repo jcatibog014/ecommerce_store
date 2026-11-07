@@ -119,6 +119,12 @@ def ticket_lines(s, store, ticket):
     return lines
 
 
+def line_index(ticket, unit_id, price_type):
+    """Where a unit at a price is on the ticket (after add_line), or None."""
+    price_type = WHOLESALE if price_type == WHOLESALE else RETAIL
+    return next((index for index, line in enumerate(ticket) if line[0] == unit_id and line[2] == price_type), None)
+
+
 def add_line(ticket, unit_id, quantity, price_type):
     """Add to the ticket (merging the same unit at the same price). Returns the new ticket."""
     price_type = WHOLESALE if price_type == WHOLESALE else RETAIL

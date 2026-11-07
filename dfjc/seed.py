@@ -473,6 +473,20 @@ def fill_counter(s, store, people, units, moment):
         counter.close_shift(s, shift, expected - centavos(short),
                             "Short 20 pesos. Maybe wrong change at lunch." if short else "", opened + 9 * hours)
 
+    # Quieter days before that: Lorna's shifts over the past four weeks (busier on weekends),
+    # so Insights' 30 and 90 days show a month of sales, not one week.
+    for days_ago in range(3, 29):
+        opened = moment - days_ago * days - 10 * hours
+        busy = 2 if (moment - days_ago * days).weekday() >= 5 else 1
+        shift = counter.open_shift(s, store, lorna, centavos(1000), opened)
+        sale(shift, lorna, [line("Bottled water 500 mL", "Bottle", 2 * busy), line("Well-milled rice", "Kilo", 2 + days_ago % 3)],
+             500, opened + hours)
+        sale(shift, lorna, [line("Assorted candies", "Piece", 5 * busy), line("Cheese crackers", "Pack", 1 + days_ago % 4)],
+             200, opened + 4 * hours)
+        if days_ago % 7 == 0:
+            sale(shift, lorna, [line("Assorted candies", "Pack of 100", 1, WHOLESALE)], 200, opened + 6 * hours)
+        counter.close_shift(s, shift, counter.summary(s, shift, opened + 9 * hours)["expected"], "", opened + 9 * hours)
+
     ana = people["ana"]
     shift = counter.open_shift(s, store, ana, centavos(1500), moment - 3 * hours)
     sale(shift, ana, [line("Soy sauce 1 L", "Bottle", 1), line("Cane vinegar 1 L", "Bottle", 1)], 100,

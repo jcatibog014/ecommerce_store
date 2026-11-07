@@ -4,7 +4,7 @@
   <p><strong>Demo store.</strong> <span class="demo-bar-more">Yours alone, deleted after 2 hours.</span></p>
   <form method="post" action="{{ url_for('auth.view_as') }}" class="view-as">
     {{ csrf() }}
-    <label for="view-as">View as</label>
+    <label for="view-as"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"></circle></svg>View as</label>
     <select name="role" id="view-as" data-auto-submit>
       {% for role in VIEW_AS_ROLES %}
         <option value="{{ role }}"{% if g.role == role %} selected{% endif %}>{{ ROLE_LABELS[role] }}</option>

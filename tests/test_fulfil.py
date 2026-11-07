@@ -384,3 +384,21 @@ def test_the_demo_fills_every_column_and_the_riders_pages(app):
     assert "Carlo Mendoza" in deliveries and "Cash with You: ₱" in deliveries and "Delivered Today" in deliveries
     post(demo, "/demo/view-as", {"role": "owner"})
     assert "Choose a File" in demo.get("/manage/products/import").get_data(as_text=True)
+
+
+# ---------- Stock History: pages and a product search ----------
+
+def test_stock_history_has_pages_and_a_product_search(app, client, store_id, cashier_id, water):
+    soap = add_product(app, store_id, "Bath soap", stock=10)
+    log_in_as(client, cashier_id)
+    for _ in range(55):
+        post(client, f"/manage/products/{water}/restock", {"pieces": "1"})
+    post(client, f"/manage/products/{soap}/restock", {"pieces": "5"})  # 56 changes in all, 1 of them soap
+    page = client.get("/manage/stock").get_data(as_text=True)
+    assert "Showing 1&ndash;50 of 56" in page and "Page 1 of 2" in page and "Older" in page
+    older = client.get("/manage/stock?page=2").get_data(as_text=True)
+    assert "Showing 51&ndash;56 of 56" in older and "Newer" in older
+    soap_only = client.get("/manage/stock?q=soap").get_data(as_text=True)
+    assert "Showing 1&ndash;1 of 1" in soap_only and "Bath soap" in soap_only and "Bottled water" not in soap_only
+    assert "Nothing Found" in client.get("/manage/stock?q=vinegar").get_data(as_text=True)
+    assert client.get("/manage/stock?page=99").status_code == 200  # past the end: the last page

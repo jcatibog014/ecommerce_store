@@ -30,7 +30,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 - Cancels an order with a reason, or gives the money back (a **refund**) for an order paid online.
 - Sells to walk-in customers at the **Counter**: type a name or scan a barcode, choose retail or wholesale, type the cash given, see the change, and print the receipt. A mistake can be voided **item by item**: choose which items (and how many of each) to void, or press **Void all**. Voided items go back in stock, and the rest of the sale stays.
 - Opens a **shift** with the cash in the drawer and closes it with a count. The store sees if the drawer has more or less than it should.
-- Adds new stock (**Restock**) and saves **stock counts**. Every change is in the **Stock History**.
+- Adds new stock (**Restock**) and saves **stock counts**. Every change is in the **Stock History**, 50 to a page, with a search for one product.
 - Adds and changes products, brands, kinds, sizes, prices, photos and categories, like the owner. Everything shoppers see is typed by the owner or a cashier.
 
 **The rider:**

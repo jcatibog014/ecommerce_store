@@ -64,7 +64,7 @@
         <form method="post" action="{{ url_for('counter.void', sale_id=sale.id) }}" class="card stack void-form">
           {{ csrf() }}
           <h2>A Mistake?</h2>
-          <p class="card-note">Type how many of each item to void. Leave the rest at 0: they stay sold. Or void the whole sale with Void all.</p>
+          <p class="card-note">Choose how many of each item to void. Leave the rest at 0: they stay sold. Or void the whole sale with Void all.</p>
           <table class="lines-table void-lines">
             <thead><tr><th scope="col">Item</th><th scope="col" class="num">Each</th><th scope="col" class="num">Void how many</th></tr></thead>
             <tbody>
@@ -73,7 +73,13 @@
                   <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }} · {{ line.kept_quantity }} sold{% if line.price_type == 'wholesale' %} · wholesale{% endif %}</span></th>
                   <td class="num">{{ line.unit_price|peso }}</td>
                   <td class="num"><label class="visually-hidden" for="void-{{ line.id }}">Void how many {{ line.product_name }} ({{ line.unit_name }})</label>
-                    <input class="void-count" id="void-{{ line.id }}" type="number" name="void_{{ line.id }}" value="0" min="0" max="{{ line.kept_quantity }}" inputmode="numeric"></td>
+                    {% if line.kept_quantity <= 50 %}
+                      <select class="void-count" id="void-{{ line.id }}" name="void_{{ line.id }}">
+                        {% for count in range(line.kept_quantity + 1) %}<option value="{{ count }}">{{ count }}</option>{% endfor %}
+                      </select>
+                    {% else %}
+                      <input class="void-count" id="void-{{ line.id }}" type="number" name="void_{{ line.id }}" value="0" min="0" max="{{ line.kept_quantity }}" inputmode="numeric">
+                    {% endif %}</td>
                 </tr>
               {% endfor %}
             </tbody>

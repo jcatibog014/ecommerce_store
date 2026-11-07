@@ -23,7 +23,7 @@
       {% endif %}
       <p class="product-price">{% if many %}<span class="per">from</span> {% endif %}<span class="price">{{ unit.retail_price|peso }}</span> <span class="per">/ {{ unit.name|lower }}</span></p>
       <p class="product-card-foot">
-        {% if not many and group.size_count > 0 %}<span class="muted">+{{ group.size_count }} bigger {{ 'size' if group.size_count == 1 else 'sizes' }}</span>{% endif %}
+        {% if not many and group.size_count > 0 %}<span class="muted">Also in {{ group.size_count }} bigger {{ 'size' if group.size_count == 1 else 'sizes' }}</span>{% endif %}
         <span class="stock stock-{{ kind }}">{{ words }}</span>
       </p>
     </div>

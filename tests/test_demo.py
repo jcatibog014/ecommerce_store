@@ -269,3 +269,18 @@ def test_the_demo_rider_sees_the_riders_own_details(demo):
     assert "Account menu for </span>Jun" in page
     view_as(demo, "cashier")  # a cashier's work in the demo is the visitor's own
     assert "ana.reyes@example.com" in demo.get("/settings/").get_data(as_text=True)
+
+
+def test_review_fixes_show_in_the_demo(demo):
+    """The Price order button, short packing cards, a month of counter sales, the area switch."""
+    view_as(demo, "cashier")
+    assert "Price order" in demo.get("/manage/orders").get_data(as_text=True)
+    packing = demo.get("/manage/packing").get_data(as_text=True)
+    assert "more</a>" in packing  # a long order shows 3 items, then a link to the rest
+    assert "<details class=\"history-details\">" in demo.get("/manage/rider-cash").get_data(as_text=True)
+    view_as(demo, "owner")
+    assert 'class="switch"' in demo.get("/manage/delivery-areas").get_data(as_text=True)
+    shifts = demo.get("/counter/shifts").get_data(as_text=True)
+    assert shifts.count("Lorna Cruz") >= 20  # four weeks of shifts, so Insights has a month to show
+    view_as(demo, "shopper")
+    assert "Also in 1 bigger size" in demo.get("/products").get_data(as_text=True)

@@ -18,7 +18,7 @@
           {{ field('name', 'Barangay', area.name, attrs='required maxlength="80"') }}
           {{ money_field('fee', 'Delivery fee', area.fee, attrs='required') }}
           {{ field('sort_order', 'Order', area.sort_order, attrs='inputmode="numeric"') }}
-          <label class="check"><input type="checkbox" name="is_active" value="1"{% if area.is_active %} checked{% endif %}><span class="area-on">On</span></label>
+          <label class="check"><input class="switch" type="checkbox" name="is_active" value="1"{% if area.is_active %} checked{% endif %}><span class="area-on">Delivering to {{ area.name }}</span></label>
           <div class="unit-actions"><button class="button button-small button-quiet" type="submit">Save</button></div>
         </form>
       {% endfor %}

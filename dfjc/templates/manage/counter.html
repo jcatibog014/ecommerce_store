@@ -61,7 +61,7 @@
       {% if lines %}
         <ul class="plain-list ticket-lines">
           {% for line in lines %}
-            <li class="ticket-line{% if line.price_type == 'wholesale' %} is-wholesale{% endif %}">
+            <li class="ticket-line{% if line.price_type == 'wholesale' %} is-wholesale{% endif %}{% if line.index == just_added %} is-new{% endif %}">
               <span class="ticket-what"><strong>{{ line.unit.product.name }}</strong>
                 <span class="row-sub">{{ line.unit.name }} · {{ 'Wholesale' if line.price_type == 'wholesale' else 'Retail' }} {{ line.unit_price|peso }}</span></span>
               <form method="post" action="{{ url_for('counter.line', index=line.index) }}" class="ticket-qty">
@@ -70,9 +70,13 @@
                 <input class="qty-input" id="tq-{{ line.index }}" type="number" name="quantity" value="{{ line.quantity }}" min="0" max="999">
                 <button class="button button-small button-quiet" type="submit">Update</button>
                 <button class="link-button" type="submit" name="action" value="{{ 'retail' if line.price_type == 'wholesale' else 'wholesale' }}">{{ 'Make retail' if line.price_type == 'wholesale' else 'Make wholesale' }}</button>
-                <button class="link-button danger-link" type="submit" name="action" value="remove">Remove</button>
               </form>
               <span class="ticket-total">{{ line.line_total|peso }}</span>
+              {# Under the price, like the cart, so every line's buttons sit on one row. #}
+              <form method="post" action="{{ url_for('counter.line', index=line.index) }}" class="ticket-remove">
+                {{ csrf() }}<input type="hidden" name="q" value="{{ q }}">
+                <button class="link-button danger-link" type="submit" name="action" value="remove">Remove</button>
+              </form>
             </li>
           {% endfor %}
         </ul>

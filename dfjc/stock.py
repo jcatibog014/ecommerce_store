@@ -17,7 +17,7 @@ if a sale happened meanwhile, they are asked to count again.
 These UPDATEs don't touch products.version, so they never make someone's open
 product form out of date. The caller commits.
 """
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from .models import MOVE_COUNT, MOVE_ORDER, MOVE_RESTOCK, MOVE_START, Product, StockMove
 
@@ -92,10 +92,28 @@ def take_for_order(s, order, by, moment):
         record(s, product, -pieces, after, MOVE_ORDER, by, moment, order_id=order.id, note=order.ref)
 
 
-def history(s, store, product_id=None, reason=None, limit=300):
+HISTORY_PAGE = 50
+
+
+def history_query(store, product_id=None, reason=None, q=""):
+    """Stock moves of a store; q keeps the moves of products whose name has every word."""
+    from .catalog import search_condition
     query = select(StockMove).where(StockMove.store_id == store.id)
     if product_id:
         query = query.where(StockMove.product_id == product_id)
     if reason:
         query = query.where(StockMove.reason == reason)
-    return s.scalars(query.order_by(StockMove.created_at.desc(), StockMove.id.desc()).limit(limit)).all()
+    if q:
+        query = query.where(StockMove.product_id.in_(select(Product.id).where(Product.store_id == store.id,
+                                                                              *search_condition(q))))
+    return query
+
+
+def history(s, store, product_id=None, reason=None, limit=HISTORY_PAGE, q="", offset=0):
+    query = history_query(store, product_id, reason, q)
+    return s.scalars(query.order_by(StockMove.created_at.desc(), StockMove.id.desc())
+                     .offset(offset).limit(limit)).all()
+
+
+def history_count(s, store, reason=None, q=""):
+    return s.scalar(select(func.count()).select_from(history_query(store, reason=reason, q=q).subquery()))

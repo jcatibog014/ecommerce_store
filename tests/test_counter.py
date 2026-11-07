@@ -356,3 +356,20 @@ def test_the_demo_counter_has_examples(app):
     everyone = demo.get("/counter/shifts").get_data(as_text=True)
     assert "Lorna Cruz" in everyone and "Short 20 pesos" in everyone and "Matches" in everyone
     assert "What Should Be in the Drawer" in demo.get("/counter/shift").get_data(as_text=True)
+
+
+def test_the_line_just_added_lights_up_once(app, at_counter, water):
+    ring(at_counter, unit_id(app, water, "Bottle"), 2)
+    ring(at_counter, unit_id(app, water, "Case of 24"), 1)
+    page = at_counter.get("/counter").get_data(as_text=True)
+    assert page.count("is-new") == 1 and re.search(r'ticket-line[^"]*is-new', page)
+    assert "is-new" not in at_counter.get("/counter").get_data(as_text=True)  # only right after adding
+    # Remove sits under the price, in its own small form, on every line.
+    assert page.count('class="ticket-remove"') == 2
+
+
+def test_void_counts_are_a_list_to_choose_from(app, at_counter, water):
+    ring(at_counter, unit_id(app, water, "Bottle"), 3)
+    post(at_counter, "/counter/pay", {"cash_given": "100", "ticket_key": ticket_key(at_counter)})
+    page = at_counter.get(f"/counter/sales/{last_sale(app).id}").get_data(as_text=True)
+    assert '<select class="void-count"' in page and '<option value="3">3</option>' in page

@@ -183,8 +183,14 @@ def count(product_id):
 def stock_history():
     s = db.session()
     reason = request.args.get("reason") if request.args.get("reason") in MOVE_REASONS else None
-    return render_template("manage/stock.html", moves=stock.history(s, g.store, reason=reason), reason=reason,
-                           reasons=MOVE_REASONS)
+    q = " ".join((request.args.get("q") or "").split())[:80]
+    total = stock.history_count(s, g.store, reason, q)
+    pages = max(1, -(-total // stock.HISTORY_PAGE))
+    page = min(max(request.args.get("page", type=int) or 1, 1), pages)
+    first = (page - 1) * stock.HISTORY_PAGE
+    moves = stock.history(s, g.store, reason=reason, q=q, offset=first)
+    return render_template("manage/stock.html", moves=moves, reason=reason, reasons=MOVE_REASONS, q=q,
+                           page=page, pages=pages, total=total, first=first + 1, last=first + len(moves))
 
 
 # ---------- Adding many products from a CSV file ----------

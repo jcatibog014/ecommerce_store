@@ -45,7 +45,7 @@
         </thead>
         <tbody>
           {% for p in products %}
-            <tr data-href="{{ url_for('manage.product', product_id=p.id) }}">
+            <tr data-href="{{ url_for('manage.product', product_id=p.id) }}"{% if p.available_pieces == 0 %} class="is-out"{% endif %}>
               <th scope="row" class="col-product">
                 <span class="row-product">
                   <span class="row-picture">{{ product_picture(p) }}</span>
@@ -55,7 +55,7 @@
               </th>
               <td>
                 {% if p.units %}
-                  <ul class="unit-list">{% for u in p.units %}<li{% if not u.is_active %} class="is-off"{% endif %}>{{ u.name }} <strong>{{ u.retail_price|peso }}</strong></li>{% endfor %}</ul>
+                  <ul class="unit-list">{% for u in p.units %}<li{% if not u.is_active %} class="is-off"{% endif %}><span>{{ u.name }}</span> <strong>{{ u.retail_price|peso }}</strong></li>{% endfor %}</ul>
                 {% else %}<span class="warn-text">No units yet</span>{% endif %}
               </td>
               <td class="num">

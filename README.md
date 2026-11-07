@@ -97,6 +97,7 @@ This project practises **transactions**, **payments** and **order state**:
 | Favorites | ![Saved products](docs/screenshots/favorites.png) |
 | Saved addresses | ![Delivery addresses](docs/screenshots/addresses.png) |
 | Settings | ![Settings](docs/screenshots/settings.png) |
+| Settings, as a rider | ![Settings for a rider](docs/screenshots/settings-rider.png) |
 | Cashier: orders to price | ![The orders queue](docs/screenshots/orders-queue.png) |
 | Cashier: price an order | ![Retail or wholesale for each line](docs/screenshots/price-order.png) |
 | Cashier: price an order (dark mode) | ![Pricing in dark mode](docs/screenshots/price-order-dark.png) |

@@ -231,6 +231,19 @@ def load_user():
     g.role = permissions.role_of(g.user)
 
 
+def acting_user():
+    """The person this page is for. In the demo the visitor (the owner) plays the rider through
+    View As, and then acts as the demo store's rider (Jun): his deliveries, his cash, his name in
+    Settings. Everywhere else it is the person logged in."""
+    if g.user is not None and g.user.is_demo and g.role == RIDER:
+        if "acting_rider" not in g:
+            g.acting_rider = db.session().scalar(select(User).where(
+                User.store_id == g.store.id, User.role == RIDER).order_by(User.id))
+        if g.acting_rider is not None:
+            return g.acting_rider
+    return g.user
+
+
 def csrf_token():
     """A secret per session, put into every form as a hidden field.
 
@@ -463,5 +476,6 @@ def set_password_command(email):
 
 def init_app(app):
     app.jinja_env.globals["csrf_token"] = csrf_token
+    app.jinja_env.globals["acting_user"] = acting_user
     for command in (create_owner_command, set_password_command):
         app.cli.add_command(command)

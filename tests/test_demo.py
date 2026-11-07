@@ -258,3 +258,14 @@ def test_an_old_demo_cookie_never_opens_the_next_demo(app, demo):
     with stale.session_transaction() as session:
         session.update(old_cookie)
     assert not is_logged_in(stale)
+
+
+def test_the_demo_rider_sees_the_riders_own_details(demo):
+    """View As Rider acts as the store's rider (Jun), so Settings and the menu show him, not Ana."""
+    view_as(demo, "rider")
+    page = demo.get("/settings/").get_data(as_text=True)
+    assert "jun.dizon@example.com" in page and 'value="Jun Dizon"' in page
+    assert "ana.reyes@example.com" not in page and "about your orders" not in page
+    assert "Account menu for </span>Jun" in page
+    view_as(demo, "cashier")  # a cashier's work in the demo is the visitor's own
+    assert "ana.reyes@example.com" in demo.get("/settings/").get_data(as_text=True)

@@ -49,6 +49,7 @@ PAGES = [
     ("store-details.png", "owner", "/settings/#store", "light", DESKTOP),
     ("low-stock.png", "cashier", "/manage/products?show=low", "light", DESKTOP),
     ("settings.png", "shopper", "/settings/", "light", DESKTOP),
+    ("settings-rider.png", "rider", "/settings/", "light", DESKTOP),
     ("cart.png", "shopper", "/cart", "light", DESKTOP),
     ("checkout.png", "shopper", "/checkout", "light", DESKTOP),
     ("my-orders.png", "shopper", "/orders", "light", DESKTOP),

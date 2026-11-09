@@ -18,6 +18,7 @@ Shoppers order online for pickup or delivery, and pay in cash or online (GCash, 
 - Pay in cash (at the counter, or to the rider), or **pay online** after the cashier prices the order.
 - Type a **voucher code** at checkout (like SUKI50) for pesos off, percent off, or free delivery.
 - Follow every order in **My Orders**, cancel it before packing starts, or press **Buy again** later.
+- **Change an order** after placing it, until packing starts: press **Edit order**, change amounts or remove items, and add more from the shop (Add to cart adds to that order while you edit). If the cashier had already priced it, the cashier prices it again; an order paid online can't be changed.
 - Save **Favorites** and **addresses**, and get an **email** when an order changes (you can turn it off).
 - Make an account with your name, email and mobile number. Forgot your password? The store emails you a link.
 
@@ -88,6 +89,8 @@ This project practises **transactions**, **payments** and **order state**:
 | Check out | ![Pickup or delivery, and payment](docs/screenshots/checkout.png) |
 | My orders | ![Order history](docs/screenshots/my-orders.png) |
 | An order waiting for the cashier | ![An order with an estimated total](docs/screenshots/order-waiting.png) |
+| Changing a placed order | ![Editing an order: amounts, Remove, Done editing](docs/screenshots/order-edit.png) |
+| While editing, the shop adds to the order | ![The editing bar under the shop header](docs/screenshots/edit-shop.png) |
 | A priced order | ![An order with its final total](docs/screenshots/order-priced.png) |
 | A priced order on a phone | ![A priced order on a phone](docs/screenshots/phone-order.png) |
 | An order to pay online | ![Pay now, or pay in cash instead](docs/screenshots/order-pay.png) |

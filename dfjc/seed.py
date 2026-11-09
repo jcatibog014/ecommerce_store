@@ -263,8 +263,12 @@ def fill_orders(s, store, people, moment):
     priced = order("ana", [("Cola 1.5 L", "Case of 12", 1), ("Bottled water 500 mL", "Bottle", 6)], days,
                    DELIVERY, home, "Please call when you are near.", voucher="LIBRENGHATID")
     price(priced, days - 2 * hours, wholesale_bulk=False)
-    order("ana", [("Well-milled rice", "Sack of 25 kg", 1), ("Soy sauce 1 L", "Bottle", 2),
-                  ("Cheese crackers", "Bundle of 10", 1)], timedelta(minutes=35))
+    waiting = order("ana", [("Well-milled rice", "Sack of 25 kg", 1), ("Soy sauce 1 L", "Bottle", 2),
+                            ("Cheese crackers", "Bundle of 10", 1)], timedelta(minutes=35))
+    # Ana remembered the vinegar: she added it to the placed order (edits.py), so the
+    # timeline and the cashier's queue show "Changed by the shopper".
+    from . import edits
+    edits.add_unit(s, waiting, units[("Cane vinegar 1 L", "Bottle")], 2, people["ana"], moment - timedelta(minutes=20))
 
     # Other shoppers: a reseller's bulk orders (one priced at wholesale), a delivery, and one the store cancelled.
     bulk = order("marites", [("Instant pancit canton 60 g", "Box of 72", 1), ("3-in-1 coffee sachet", "Box of 30", 2),

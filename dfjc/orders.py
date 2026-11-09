@@ -5,6 +5,8 @@
        │                                                                                                 └─> out_for_delivery ─> delivered
        └──> cancelled  (before packing; a paid order is refunded instead, stage 3)
 
+A shopper who changes a priced order (edits.py) sends it back to placed, to be priced again.
+
 TRANSITIONS lists every allowed move. move() checks it, changes the row with
 a conditional UPDATE (... WHERE status = <what we read> AND version = <what we
 read>), and writes the timeline. If someone else changed the order first, the
@@ -27,8 +29,8 @@ from .models import (
 
 TRANSITIONS = {
     PLACED: (AWAITING_PAYMENT, CONFIRMED, CANCELLED),
-    AWAITING_PAYMENT: (PAID, CONFIRMED, CANCELLED),
-    CONFIRMED: (PACKING, AWAITING_PAYMENT, CANCELLED),
+    AWAITING_PAYMENT: (PAID, CONFIRMED, CANCELLED, PLACED),  # PLACED: the shopper changed it (edits.py)
+    CONFIRMED: (PACKING, AWAITING_PAYMENT, CANCELLED, PLACED),
     PAID: (PACKING, REFUNDED),
     PACKING: (READY,),
     READY: (PICKED_UP, OUT_FOR_DELIVERY),

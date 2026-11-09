@@ -2,7 +2,7 @@
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy.exc import IntegrityError
 
-from .. import checkout, db, forms, gateways, vouchers
+from .. import checkout, db, edits, forms, gateways, orders, vouchers
 from ..dates import local_today
 from ..checkout import CheckoutProblem
 from ..dates import utcnow
@@ -37,6 +37,18 @@ def add():
         flash(problem or "That isn't sold any more.", "error")
         return redirect(back)
     s = db.session()
+    order = edits.editing(session, g.user, s)
+    if order is not None:
+        # Editing a placed order: Add to cart adds to that order instead (edits.py).
+        try:
+            edits.add_unit(s, order, unit, quantity, g.user, utcnow(), gateways.for_store(g.store))
+            s.commit()
+        except (edits.EditProblem, orders.OrderChanged, orders.MoveNotAllowed) as problem:
+            s.rollback()
+            flash(str(problem), "error")
+            return redirect(back)
+        flash(f"Added {quantity} x {unit.product.name} ({unit.name.lower()}) to order {order.ref}.")
+        return redirect(back)
     item = checkout.add_to_cart(s, g.user, unit, quantity, utcnow())
     s.commit()
     flash(f"Added {quantity} x {unit.product.name} ({unit.name.lower()}) to your cart. "
@@ -64,6 +76,19 @@ def ask():
     unit_name = request.form.get("unit_name") if request.form.get("unit_name") in sizes else sorted(sizes)[0]
     if problem or quantity_problem:
         flash(problem or quantity_problem, "error")
+        return redirect(back)
+    order = edits.editing(session, g.user, s)
+    if order is not None:
+        try:
+            edits.add_request(s, order, product, wanted, unit_name, quantity, g.user, utcnow(),
+                              gateways.for_store(g.store))
+            s.commit()
+        except (edits.EditProblem, orders.OrderChanged, orders.MoveNotAllowed) as problem:
+            s.rollback()
+            flash(str(problem), "error")
+            return redirect(back)
+        flash(f"Added to order {order.ref}: {quantity} x \"{wanted}\" ({unit_name.lower()}). The cashier checks if "
+              "we have it and tells you the price.")
         return redirect(back)
     checkout.ask_for(s, g.user, product, wanted, unit_name, quantity, utcnow())
     s.commit()

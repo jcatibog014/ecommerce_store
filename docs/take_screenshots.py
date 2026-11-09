@@ -191,6 +191,21 @@ def shoot_ask_for(page):
     save(page, "ask-for.png")
 
 
+def shoot_edit(page):
+    """Ana edits her order that waits for the cashier: the order page, then the shop with the editing bar."""
+    view_as(page, "shopper")
+    link = address(page, "{my-order:Waiting for the cashier}")
+    page.goto(f"{BASE}{link}")
+    page.get_by_role("button", name="Edit order").click()
+    page.wait_for_load_state()
+    page.goto(f"{BASE}{link}")  # from the top, so the Editing callout shows
+    save(page, "order-edit.png")
+    page.goto(f"{BASE}{address(page, '{coffee}')}")
+    save(page, "edit-shop.png")
+    page.locator(".editing-bar").get_by_role("button", name="Done editing").click()
+    page.wait_for_load_state()
+
+
 def shoot_visitor_pages(browser):
     page = browser.new_page(viewport=DESKTOP, color_scheme="light")
     for name, path in (("login.png", "/login"), ("signup.png", "/signup")):
@@ -216,6 +231,7 @@ def main():
         shoot_sandbox(pages[("light", DESKTOP["width"])])
         shoot_counter(pages[("light", DESKTOP["width"])])
         shoot_ask_for(pages[("light", DESKTOP["width"])])
+        shoot_edit(pages[("light", DESKTOP["width"])])
         browser.close()
 
 

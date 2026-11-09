@@ -1,6 +1,36 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, field, status_pill %}
-{% from "_order_parts.html" import order_steps, lines_table, timeline %}
+{% from "_order_parts.html" import order_steps, lines_table, sums, timeline %}
+
+{# Editing a placed order: each line's amount, Update and Remove (edits.py does the work). #}
+{% macro edit_lines(order) %}
+  <table class="lines-table edit-lines">
+    <thead><tr><th scope="col">Item</th><th scope="col">How many</th><th scope="col" class="num">Each</th><th scope="col" class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for line in order.lines %}
+        <tr>
+          <th scope="row">{{ line.product_name }}<span class="row-sub">{{ line.unit_name }}{% if line.pieces_per_unit > 1 %} ({{ line.pieces_per_unit|pieces }}){% endif %}
+            {% if line.is_request %} · <span class="pill pill-asked">Asked for</span>{% endif %}</span></th>
+          <td>
+            <form method="post" action="{{ url_for('my_orders.change_line', ref=order.ref, line_id=line.id) }}" class="edit-line-form">
+              {{ csrf() }}
+              <label class="visually-hidden" for="eq-{{ line.id }}">How many {{ line.product_name }} ({{ line.unit_name }})</label>
+              <input class="qty-input" id="eq-{{ line.id }}" type="number" name="quantity" value="{{ line.quantity }}" min="1" max="{{ MAX_QUANTITY }}" inputmode="numeric">
+              <button class="button button-small button-quiet" type="submit">Update</button>
+              {% if order.lines|length > 1 %}
+                <button class="link-button danger-link" type="submit" name="action" value="remove"
+                        data-confirm-button="Remove {{ line.product_name }} ({{ line.unit_name }}) from your order?">Remove</button>
+              {% endif %}
+            </form>
+          </td>
+          <td class="num">{% if line.is_request %}<span class="muted">Price later</span>{% else %}{{ line.unit_price|peso }}{% endif %}</td>
+          <td class="num">{% if line.is_request %}<span class="muted">-</span>{% else %}{{ line.line_total|peso }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ sums(order) }}
+{% endmacro %}
 {% block title %}Order {{ order.ref }} - {{ g.store.name }}{% endblock %}
 {% block content %}
   {% set latest = order.latest_payment %}
@@ -13,6 +43,20 @@
   </div>
 
   {{ order_steps(order) }}
+
+  {% if is_editing %}
+    <div class="callout callout-edit" id="editing">
+      <h2>Editing This Order</h2>
+      <p>Change the amounts below, or add items from the shop: while you edit, <strong>Add to cart</strong> adds them to this order.
+        {% if order.is_priced %}Your first change sends it back to the cashier, who prices it again.{% endif %}</p>
+      <div class="actions">
+        <a class="button button-quiet" href="{{ url_for('shop.products') }}">Add items from the shop</a>
+        <form method="post" action="{{ url_for('my_orders.done_edit', ref=order.ref) }}">
+          {{ csrf() }}<button class="button" type="submit">Done editing</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
 
   {% if order.status == 'placed' %}
     <div class="callout">
@@ -99,9 +143,9 @@
   {% endif %}
 
   <div class="order-layout">
-    <section class="card">
+    <section class="card" id="items">
       <h2>Items</h2>
-      {{ lines_table(order) }}
+      {% if is_editing %}{{ edit_lines(order) }}{% else %}{{ lines_table(order) }}{% endif %}
     </section>
     <div>
       <section class="card">
@@ -124,6 +168,16 @@
           <h2>Buy These Again</h2>
           <p class="card-note">Puts the same items in your cart, at today's prices.</p>
           <div class="form-actions"><button class="button" type="submit">Buy again</button></div>
+        </form>
+      {% endif %}
+      {% if can_edit and not is_editing %}
+        {# Until packing starts. A priced order goes back to the cashier after a change. #}
+        <form method="post" action="{{ url_for('my_orders.start_edit', ref=order.ref) }}" class="card stack"
+              {% if order.is_priced %}data-confirm="Change order {{ order.ref }}? After a change, the cashier prices it again{% if order.status == 'awaiting_payment' %}, and you pay the new total{% endif %}."{% endif %}>
+          {{ csrf() }}
+          <h2>Change This Order</h2>
+          <p class="card-note">Add items, change amounts or remove items until we start packing.{% if order.is_priced %} After a change, the cashier checks the price again.{% endif %}</p>
+          <div class="form-actions"><button class="button button-quiet" type="submit">Edit order</button></div>
         </form>
       {% endif %}
       {% if shopper_can_cancel(order) %}

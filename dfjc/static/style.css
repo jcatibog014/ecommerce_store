@@ -1078,3 +1078,12 @@ html:not(.js) .welcome-layout .flashes { position: absolute; top: 1rem; right: 1
 .row-action { text-align: right; white-space: nowrap; }
 /* The menu's own scrollbar is easy to grab on short screens. */
 @media (min-width: 56rem) { .sidebar { scrollbar-width: auto; } }
+
+/* Editing a placed order: the bar under the shop header, the callout and the editable lines. */
+.editing-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; padding: .55rem clamp(1rem, 3vw, 2.5rem); background: var(--accent-soft); border-top: 1px solid var(--rule); color: var(--ink); }
+.editing-bar p { margin: 0; }
+.editing-bar .actions { margin: 0; }
+.callout-edit { border-left-color: var(--accent); }
+.edit-line-form { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin: 0; }
+.edit-lines td { vertical-align: middle; }
+.changed-note { color: var(--warning-ink); }

@@ -27,6 +27,8 @@ def peso(centavos):
 def message(order, to_status, from_status, store):
     """(subject, the first lines) for this change, or None when it isn't worth an email."""
     ref, total = order.ref, peso(order.total)
+    if to_status == PLACED and from_status is not None:
+        return None  # the shopper changed their own order: the new price comes by email
     if to_status == PLACED:
         return (f"We got your order {ref}",
                 "Thank you! The cashier checks your order next and gives the wholesale price where it applies. "

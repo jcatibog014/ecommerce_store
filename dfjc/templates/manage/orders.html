@@ -28,7 +28,8 @@
             <tr data-href="{{ url_for('staff_orders.detail', ref=order.ref) }}">
               <th scope="row"><a class="row-link" href="{{ url_for('staff_orders.detail', ref=order.ref) }}">{{ order.ref }}</a>
                 {% if bulk and order.status == 'placed' %}<span class="row-sub">Has bulk items</span>{% endif %}
-                {% if order.status == 'placed' and order.lines|selectattr('is_request')|list %}<span class="row-sub asked-note">Has asked-for items</span>{% endif %}</th>
+                {% if order.status == 'placed' and order.lines|selectattr('is_request')|list %}<span class="row-sub asked-note">Has asked-for items</span>{% endif %}
+                {% if order.status == 'placed' and order.events|selectattr('from_status')|selectattr('to_status', 'equalto', 'placed')|list %}<span class="row-sub changed-note">Changed by the shopper</span>{% endif %}</th>
               <td>{{ order.customer_name }}<span class="row-sub">{{ order.customer_mobile|mobile }}</span></td>
               <td>{{ order.placed_at|nice_datetime }}</td>
               <td>{{ 'Pickup' if order.fulfilment == 'pickup' else 'Delivery' }}{% if order.area_name %}<span class="row-sub">{{ order.area_name }}</span>{% endif %}</td>

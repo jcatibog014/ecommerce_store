@@ -45,4 +45,16 @@
       {% endif %}
     </div>
   </div>
+  {% if g.user and session.get('editing_order') %}
+    {% set editing_ref = session.get('editing_order') %}
+    <div class="editing-bar">
+      <p><strong>Editing order {{ editing_ref }}.</strong> Add to cart adds to this order.</p>
+      <div class="actions">
+        <a class="button button-small button-quiet" href="{{ url_for('my_orders.detail', ref=editing_ref, _anchor='items') }}">See the order</a>
+        <form method="post" action="{{ url_for('my_orders.done_edit', ref=editing_ref) }}">
+          {{ csrf() }}<button class="button button-small" type="submit">Done editing</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
 </header>

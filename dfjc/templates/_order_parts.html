@@ -43,7 +43,7 @@
     {% for event in order.events|reverse %}
       <li>
         <span class="timeline-when">{{ event.created_at|nice_datetime }}</span>
-        <span class="timeline-what"><strong>{{ EVENT_WORDS[event.to_status] }}</strong>{% if event.by and event.to_status != 'placed' %} by {{ event.by.first_name }}{% endif %}</span>
+        <span class="timeline-what"><strong>{{ 'Changed by the shopper' if event.to_status == 'placed' and event.from_status else EVENT_WORDS[event.to_status] }}</strong>{% if event.by and event.to_status != 'placed' %} by {{ event.by.first_name }}{% endif %}</span>
         {% if event.note %}<span class="timeline-note">{{ event.note }}</span>{% endif %}
       </li>
     {% endfor %}
